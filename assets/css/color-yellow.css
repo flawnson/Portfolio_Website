@@ -1,0 +1,41 @@
+
+/*Main Color*/
+.home_type .side #typed,
+.menu .social-icons a:hover,
+.menu .active_item,
+.mob-menu .menu-title,
+.menu .menu_list li a:hover,
+.testimonials .arrows span:hover,
+.fun-facts span,
+.portfolio_sec  .item .info p,
+.zoom-anim-dialog .project_info span,
+.contact .info span.icon {
+    color: #ffbb06;
+}
+
+.home_type .more_info a:hover,
+.skills .skill div span,
+.resume .date:after,
+a.rslides_nav.rslides1_nav:hover,
+.services .font-icon i,
+li.active_filter:after,
+.zoom-anim-dialog a.demo:hover,
+.contact .contact_form .submit:hover {
+    background-color: #ffbb06;
+}
+
+.contact .contact_form .submit,
+.home_type .more_info a:hover,
+.testimonials .arrows span:hover,
+.fun-facts h4,
+.resume .item,
+.services .font-icon i,
+.zoom-anim-dialog a.demo,
+.form-control:focus,
+.contact .contact_form .submit:hover {
+    border-color: #ffbb06;
+}
+
+g.Header {
+    stroke: #ffbb06;
+}
