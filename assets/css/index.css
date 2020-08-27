@@ -4,6 +4,15 @@ body {
     font-size: 1rem;
 }
 
+
+#loader{
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+    background: #FFFFFF url('https://media1.giphy.com/media/E6jscXfv3AkWQ/giphy.gif') no-repeat center;
+    z-index: 999;
+}
+
 /* Left column */
 ul.network-icon {
     display: inline-flex;
