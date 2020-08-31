@@ -19,15 +19,19 @@ footer {
 /* Left column */
 ul.network-icon {
     display: inline-flex;
-    flex-direction: row;
-    flex-wrap: wrap;
     justify-content: center;
     list-style: none;
     padding: 0;
+    border: 10px dotted black;
+}
+
+.icon {
+    padding-left: 10%;
+    padding-right: 10%;
 }
 
 img.profile {
-    width: 50%;
+    width: 70%;
     height: auto;
 }
 
