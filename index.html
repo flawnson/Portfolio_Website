@@ -23,7 +23,7 @@
     <!-- Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla&family=Roboto&display=swap">
 
-    <!-- Main Stylesheet -->
+    <!-- Main Stylesheet (decide if before or after bootstrap)-->
     <link rel="stylesheet" href="assets/css/index.css" type="text/css">
 
     <!-- Bootstrap core CSS -->
@@ -31,6 +31,8 @@
 
 </head>
 <body>
+<!--TODO: Finish creating preloader-->
+<!--TODO: Finish Dark mode-->
 <!--<div id="loader"></div>-->
 <!--    Right column-->
     <div class="container-fluid">
@@ -39,6 +41,7 @@
                 <li><a href=index.html><h4>🏠 Home</h4></a></li>
                 <li><a href="blog.flawnson.ca"><h4>📝 Blog</h4></a></li>
                 <li><a href="blog.flawnson.ca"><h4>📋 CV</h4></a></li>
+<!--                <button><a onclick="darkMode()"><h4>Toggle</h4></a></button>-->
             </ul>
         </nav>
 
@@ -148,9 +151,10 @@
         <div class="panel-group">
             <div class="panel panel-default">
                 <img class="img-responsive" src="assets/images/Sparse-DDD.png" alt="Sparse DDD">
-                <div class="panel-heading"><h4>Sparse Dynamic Distribution Decomposition: Efficient Integration of Trajectory and Snapshot Time Series
-                    Data</h4></div>
-                <div class="panel-body">DDD allows for the fitting of continuous-time Markov chains over these basis functions and as a result continuously maps between distributions. The number of parameters in DDD scales by the square of the number of basis functions; we reformulate the problem and restrict the method to compact basis functions which leads to the inference of sparse matrices only -- hence reducing the number of parameters.</div>
+                <div class="panel-heading"><h4>Sparse Dynamic Distribution Decomposition: Efficient Integration of Trajectory and Snapshot Time Series Data</h4>
+                <p><i>Jake P. Taylor-King, Cristian Regep, Jyothish Soman, Flawnson Tong, Catalina Cangea, Charlie Roberts</i></p>
+                </div>
+                <div class="panel-body"><p>DDD allows for the fitting of continuous-time Markov chains over these basis functions and as a result continuously maps between distributions. The number of parameters in DDD scales by the square of the number of basis functions; we reformulate the problem and restrict the method to compact basis functions which leads to the inference of sparse matrices only -- hence reducing the number of parameters.</p></div>
                 <div class="panel-footer">
                     <button class="btn btn-default btn-xs"><a href="https://arxiv.org/pdf/2006.05138.pdf">PDF</a></button>
                     <button class="btn btn-default btn-xs"><a href="https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=flawnson&btnG=#d=gs_cit&u=%2Fscholar%3Fq%3Dinfo%3AM9TiUq_KUHwJ%3Ascholar.google.com%2F%26output%3Dcite%26scirp%3D0%26hl%3Den">Cite</a></button>
