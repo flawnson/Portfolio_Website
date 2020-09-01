@@ -1,7 +1,7 @@
 /* General styling */
 body {
-    font-family: "Raleway", "Roboto", sans-serif;
-    font-size: 1rem;
+    font-family: "Karla", "Roboto", sans-serif;
+    font-size: 1.5rem;
 }
 
 footer {
@@ -35,6 +35,14 @@ ul.network-icon {
     justify-content: center;
     list-style: none;
     padding: 0;
+}
+
+.icon {
+    color: black;
+}
+
+#spotify-embed {
+    height: 370px;
 }
 
 /* Center column*/
