@@ -8,6 +8,10 @@ footer {
     clear: both;
 }
 
+iframe {
+    padding: 3% 0;
+}
+
 #loader{
     position: fixed;
     width: 100%;
@@ -22,9 +26,20 @@ footer {
     padding-bottom: 3%;
 }
 
+.profile {
+    margin-bottom: 10px;
+}
+
 ul.network-icon {
     display: flex;
     justify-content: center;
+    list-style: none;
+    padding: 0;
+}
+
+/* Center column*/
+ul.publication-content {
+    display: flex;
     list-style: none;
     padding: 0;
 }
