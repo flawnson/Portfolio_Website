@@ -5,12 +5,16 @@
 
 $(document).ready(function() {
 //Preloader
-    preloaderFadeOutTime = 500;
+    preloaderFadeOutTime = 1000;
     function hidePreloader() {
-        var preloader = $('.loader');
+        var preloader = $('#preloader');
         preloader.fadeOut(preloaderFadeOutTime);
     }
     hidePreloader();
+});
+
+$(window).load(function() {
+    $('#preloader').fadeOut('slow');
 });
 
 function darkMode() {
