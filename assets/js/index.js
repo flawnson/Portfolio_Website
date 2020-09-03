@@ -5,12 +5,16 @@
 
 $(document).ready(function() {
 //Preloader
-    preloaderFadeOutTime = 1000;
-    function hidePreloader() {
-        var preloader = $('#preloader');
-        preloader.fadeOut(preloaderFadeOutTime);
-    }
-    hidePreloader();
+    setTimeout(
+        function()
+        {
+            preloaderFadeOutTime = 500;
+            function hidePreloader() {
+                var preloader = $('#preloader');
+                preloader.fadeOut(preloaderFadeOutTime);
+            }
+            hidePreloader();
+        }, 1000);
 });
 
 // hidePreloader
