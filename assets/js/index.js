@@ -13,11 +13,13 @@ $(document).ready(function() {
     hidePreloader();
 });
 
-$(window).load(function() {
-    $('#preloader').fadeOut('slow');
-});
+// hidePreloader
+// $(window).load(function() {
+//     $('#preloader').fadeOut('slow');
+// });
 
 function darkMode() {
     var element = document.body;
     element.classList.toggle("dark-mode");
+    console.log("pressed")
 }

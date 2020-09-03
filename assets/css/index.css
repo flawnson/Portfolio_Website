@@ -1,4 +1,9 @@
 /* General styling */
+/* bootstrap 3 automatically sets box-sizing to border-box instead of content-box */
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: "Karla", "Roboto", sans-serif;
     font-size: 1.5rem;
@@ -18,6 +23,11 @@ iframe {
     height: 100vh;
     background: #FFFFFF url('https://media1.giphy.com/media/E6jscXfv3AkWQ/giphy.gif') no-repeat center;
     z-index: 999;
+}
+
+.dark-mode {
+    background-color: black;
+    color: white;
 }
 
 /* Left column */
