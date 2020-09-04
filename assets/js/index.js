@@ -17,6 +17,10 @@ function darkMode() {
     var icons = $(".icon")
     element.classList.toggle("dark-mode");
     icons.toggleClass("dark-mode")
-
-    console.log("pressed")
 }
+
+window.addEventListener("load",function lastMod() {
+    var lastMod = "Last Edited: " + document.lastModified
+    document.getElementById("modTime").innerHTML = lastMod;
+    console.log("this")
+},false)

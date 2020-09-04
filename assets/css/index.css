@@ -56,6 +56,10 @@ ul.network-icon {
     color: black;
 }
 
+.icon.dark-mode {
+    color: white;
+}
+
 #spotify-embed {
     height: 370px;
 }
@@ -75,6 +79,10 @@ ul.publication-content {
 /* Right column */
 nav li {
     list-style: none;
+}
+
+#ModTimer {
+    color: grey;
 }
 
 /* The switch - the box around the slider */
