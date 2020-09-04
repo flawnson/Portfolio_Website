@@ -1,8 +1,3 @@
-// var preloader = document.getElementById('loader');
-// function preLoaderHandler(){
-//     preloader.style.display = 'none';
-// }
-
 $(document).ready(function() {
 //Preloader
     setTimeout(
@@ -17,13 +12,11 @@ $(document).ready(function() {
         }, 1000);
 });
 
-// hidePreloader
-// $(window).load(function() {
-//     $('#preloader').fadeOut('slow');
-// });
-
 function darkMode() {
     var element = document.body;
+    var icons = $(".icon")
     element.classList.toggle("dark-mode");
+    icons.toggleClass("dark-mode")
+
     console.log("pressed")
 }
