@@ -14,13 +14,13 @@ $(document).ready(function() {
 
 function darkMode() {
     var element = document.body;
-    var icons = $(".icon")
+    var icons = $(".icon");
     element.classList.toggle("dark-mode");
-    icons.toggleClass("dark-mode")
-}
+    icons.toggleClass("dark-mode");
+};
 
 window.addEventListener("load",function lastMod() {
-    var lastMod = "Last Edited: " + document.lastModified
+    var lastMod = "Last Edited: " + document.lastModified;
     document.getElementById("modTime").innerHTML = lastMod;
-    console.log("this")
-},false)
+},false);
+
