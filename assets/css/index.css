@@ -81,10 +81,6 @@ nav li {
     list-style: none;
 }
 
-#ModTimer {
-    color: grey;
-}
-
 /* The switch - the box around the slider */
 .switch {
     position: relative;
