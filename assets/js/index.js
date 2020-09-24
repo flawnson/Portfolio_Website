@@ -12,6 +12,7 @@ $(document).ready(function() {
         }, 1000);
 });
 
+// To add dark mode toggle to website
 function darkMode() {
     var element = document.body;
     var icons = $(".icon")
@@ -19,6 +20,7 @@ function darkMode() {
     icons.toggleClass("dark-mode")
 }
 
+// To add last edited time to footer of website
 window.addEventListener("load",function lastMod() {
     var lastMod = "Last Edited: " + document.lastModified
     document.getElementById("modTime").innerHTML = lastMod;
