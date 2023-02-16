@@ -10,8 +10,13 @@ body {
 }
 
 /* For CSS dark mode (inefective on icons, headings, and li items) */
-body.dark-mode img, p{
+body.dark-mode p{
     filter: brightness(.8) contrast(1.2);
+}
+
+/* Used to make image not look too harsh in dark mode*/
+body.dark-mode img{
+    filter: brightness(1.0) contrast(1.2);
 }
 
 footer {
