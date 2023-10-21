@@ -8,4 +8,4 @@ The main dependencies are Bootstrap 3 (I didn't use 4 because my previous websit
 
 # Blog
 
-Attempts to use Notion as a CMS aren't going as planned, but I still like writing in Notion, so I plan to make use of the export to HTML or MD function alot. For scientific writing I use LaTeX. When I need to convert between files I use [pandoc](https://pandoc.org/). I will wait patiently for the Notion API 🥱
+Attempts to use Notion as a CMS aren't going as planned, but I still like writing in Notion, so I plan to make use of the export to HTML or MD function a lot. For scientific writing I use LaTeX. When I need to convert between files I use [pandoc](https://pandoc.org/). I will wait patiently for the Notion API 🥱
