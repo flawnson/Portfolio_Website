@@ -20,6 +20,17 @@ function darkMode() {
     icons.toggleClass("dark-mode");
 };
 
+// To add dark mode toggle to website
+function currentYear() {
+    return new Date().getFullYear()
+};
+
+// To add last edited time to footer of website
+window.addEventListener("load",function setCurrentYear() {
+    var copyright = "© " + currentYear() + " Copyright:"
+    document.getElementById("copyright").textContent = copyright
+},false);
+
 // To add last edited time to footer of website
 window.addEventListener("load",function lastMod() {
     var lastMod = "Last Edited: " + document.lastModified;
