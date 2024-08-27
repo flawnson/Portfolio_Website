@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/ovkp4gxrefxw/public_html/
+    - export DEPLOYPATH=/home/flawhvna/public_html/
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
