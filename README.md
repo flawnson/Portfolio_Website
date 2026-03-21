@@ -3,8 +3,8 @@
 This repository contains the code for my website and blog as hosted on CPanel.
 
 ## Hosting
-Domains are managed on GoDaddy (.com and .ca are each on separate accounts).
-Web hosting is managed by CPanel. You can access the CPanel admin by following the steps [here](https://ca.godaddy.com/help/access-cpanel-in-my-linux-hosting-40972).
+Domains are managed on ~~GoDaddy~~ NameCheap, both .com and .ca domains are registered on my Comend account (TODO: transfer to my personal NameCheap account).
+Web hosting is managed by CPanel. You can access the CPanel admin by visiting the SSL page on the 
 You'll need to log into CPanel, pull the most recent changes, and deploy HEAD after making changes for them to appear on the production site.
 
 ## Libraries and Packages
