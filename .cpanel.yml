@@ -1,9 +1,6 @@
+---
 deployment:
   tasks:
     - export DEPLOYPATH=/home/flawhvna/public_html/
-
-    - /usr/bin/rsync -av --delete \
-      --exclude='.git' \
-      --exclude='.cpanel.yml' \
-      --exclude='.github' \
-      ./ $DEPLOYPATH
+    - /bin/cp -R assets $DEPLOYPATH
+    - /bin/cp index.html $DEPLOYPATH
