@@ -88,7 +88,7 @@ function getMicroPostsUrl() {
 }
 
 function getLastCommitUrl() {
-    return `${getApiBaseUrl()}/github-last-commit.php`;
+    return `${getApiBaseUrl()}/api/github-last-commit.php`;
 }
 
 async function loadMicroPosts() {
