@@ -1,1 +1,4 @@
 # Created by .ignore support plugin (hsz.mobi)
+.env
+
+public_html/api/microblog-config.php
