@@ -2,5 +2,7 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/flawhvna/public_html/
+    - /bin/mkdir -p $DEPLOYPATH/api
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp api/micro-posts.php $DEPLOYPATH/api/micro-posts.php
