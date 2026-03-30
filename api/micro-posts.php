@@ -13,9 +13,8 @@ if (in_array($origin, $allowedOrigins, true)) {
 }
 
 header("Vary: Origin");
-
 header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, X-Admin-Token");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
@@ -44,12 +43,11 @@ try {
 } catch (Throwable $e) {
     respond(500, [
         'error' => 'database_connection_failed',
-        'message' => $e->getMessage(),
     ]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    $limit = isset($_GET["limit"]) ? (int) $_GET["limit"] : 20;
+    $limit = isset($_GET["limit"]) ? (int) $_GET["limit"] : 50;
     $limit = max(1, min($limit, 100));
 
     $stmt = $pdo->prepare("
@@ -63,7 +61,15 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
     $posts = $stmt->fetchAll();
 
-    respond(200, ["posts" => $posts]);
+    $posts = array_map(static function (array $post): array {
+        return [
+            'id' => (int) $post['id'],
+            'body' => (string) $post['body'],
+            'created_at' => (string) $post['created_at'],
+        ];
+    }, $posts);
+
+    respond(200, ['posts' => $posts]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -79,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         respond(400, ["error" => "invalid_json"]);
     }
 
-    $body = trim((string) ($json["body"] ?? ""));
+    $body = trim((string)($json["body"] ?? ""));
     if ($body === "") {
         respond(422, ["error" => "body_required"]);
     }
@@ -98,7 +104,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     respond(201, [
         "ok" => true,
-        "id" => (int) $pdo->lastInsertId(),
+        "id" => (int)$pdo->lastInsertId(),
+    ]);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "DELETE") {
+    $providedToken = $_SERVER["HTTP_X_ADMIN_TOKEN"] ?? "";
+    if (!hash_equals($adminToken, $providedToken)) {
+        respond(401, ["error" => "unauthorized"]);
+    }
+
+    $id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
+    if ($id <= 0) {
+        respond(422, ["error" => "invalid_id"]);
+    }
+
+    $stmt = $pdo->prepare("
+        DELETE FROM micro_posts
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ":id" => $id,
+    ]);
+
+    respond(200, [
+        "ok" => true,
+        "deleted" => $stmt->rowCount() > 0,
     ]);
 }
 

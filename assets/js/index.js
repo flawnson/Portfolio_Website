@@ -81,7 +81,7 @@ function getMicroPostsUrl() {
         window.location.hostname === "127.0.0.1";
 
     return isLocal
-        ? "https://flawnson.com/api/micro-posts.php?limit=20"
+        ? "https://flawnson.com/api/micro-posts.php?limit=5"
         : "/api/micro-posts.php?limit=20";
 }
 
