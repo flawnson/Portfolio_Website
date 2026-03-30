@@ -29,7 +29,10 @@ try {
         ]
     );
 } catch (Throwable $e) {
-    respond(500, ["error" => "database_connection_failed"]);
+    respond(500, [
+        'error' => 'database_connection_failed',
+        'message' => $e->getMessage(),
+    ]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
