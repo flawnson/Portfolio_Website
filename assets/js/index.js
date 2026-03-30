@@ -133,8 +133,6 @@ async function loadLastCommitTimer() {
             throw new Error("Invalid commit timestamp received.");
         }
 
-        statusEl.innerHTML = `Last push was to <b>${escapeHtml(repoName)}</b> on ${lastCommitDate.toLocaleString()}.`;
-
         function render() {
             const now = new Date();
             const diffMs = now - lastCommitDate;
