@@ -82,7 +82,7 @@ function getMicroPostsUrl() {
 
     return isLocal
         ? "https://flawnson.com/api/micro-posts.php?limit=5"
-        : "/api/micro-posts.php?limit=20";
+        : "/api/micro-posts.php?limit=5";
 }
 
 async function loadMicroPosts() {
@@ -90,9 +90,7 @@ async function loadMicroPosts() {
     if (!root) return;
 
     try {
-        const res = await fetch(getMicroPostsUrl(), {
-            cache: "no-store"
-        });
+        const res = await fetch(getMicroPostsUrl());
 
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
