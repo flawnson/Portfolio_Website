@@ -1,8 +1,3 @@
-<!-- TODO: A countdown since the last time I made a commit on Github. -->
-<!-- TODO: Take me to a random article button (once I have articles lined up). -->
-<!-- TODO: Twitter, but on my website :D. -->
-<!-- TODO: Make my website editable like a Google Doc. -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,14 +5,45 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Flawnson's portfolio and website">
-    <meta name="keywords" content="Flawnson, Tong">
+    <meta name="description" content="Flawnson Tong's portfolio: and full-stack developer building products at Comend, Teatico, and beyond.">
+    <meta name="keywords" content="Flawnson Tong, Flawnson, portfolio, full-stack developer, TypeScript, Python, Toronto, Comend, Teatico">
     <meta name="author" content="Flawnson Tong">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#ffffff">
 
-    <title>Flawnson</title>
+    <title>Flawnson Tong | Full-Stack Developer, and Builder</title>
+    <link rel="canonical" href="https://flawnson.com/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Flawnson">
+    <meta property="og:locale" content="en_CA">
+    <meta property="og:title" content="Flawnson Tong | Full-Stack Developer, and Builder">
+    <meta property="og:description" content="Portfolio of Flawnson Tong: and full-stack developer building products at Comend, Teatico, and beyond.">
+    <meta property="og:url" content="https://flawnson.com/">
+    <meta property="og:image" content="https://flawnson.com/assets/images/profile%202.jpg">
+    <meta property="og:image:alt" content="Portrait of Flawnson Tong">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Flawnson Tong | Full-Stack Developer, and Builder">
+    <meta name="twitter:description" content="Portfolio of Flawnson Tong: and full-stack developer building products at Comend, Teatico, and beyond.">
+    <meta name="twitter:image" content="https://flawnson.com/assets/images/profile%202.jpg">
+    <meta name="twitter:image:alt" content="Portrait of Flawnson Tong">
 
     <!-- Favicon -->
     <link id="favicon" rel="icon" type="image/png" href="assets/images/Favicon.png">
+
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://pro.fontawesome.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="//open.spotify.com">
+    <link rel="dns-prefetch" href="//www.openstreetmap.org">
 
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
@@ -42,19 +68,68 @@
     <script defer src="assets/js/index.js" type="text/javascript"></script>
 
     <!-- Pixel Code for https://app.tinyanalytics.io/ -->
-<!--    <script defer src="https://app.tinyanalytics.io/pixel/tLNoxXY9LbukLHhy"></script>-->
+    <!--    <script defer src="https://app.tinyanalytics.io/pixel/tLNoxXY9LbukLHhy"></script>-->
     <!-- END Pixel Code -->
 
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "@id": "https://flawnson.com/#website",
+                    "url": "https://flawnson.com/",
+                    "name": "Flawnson",
+                    "publisher": {
+                        "@id": "https://flawnson.com/#person"
+                    }
+                },
+                {
+                    "@type": "Person",
+                    "@id": "https://flawnson.com/#person",
+                    "name": "Flawnson Tong",
+                    "url": "https://flawnson.com/",
+                    "image": "https://flawnson.com/assets/images/profile%202.jpg",
+                    "jobTitle": "Software Developer",
+                    "sameAs": [
+                        "https://github.com/flawnson/",
+                        "https://twitter.com/flawnsonTong",
+                        "https://medium.com/@flawnsontong1",
+                        "https://www.linkedin.com/in/flawnson/",
+                        "https://open.spotify.com/user/pychie?si=6ODQ6bZoRfGNxItRbo7OJQ",
+                        "https://www.youtube.com/channel/UCvr4LPREh7HlJObRAoDmwTQ"
+                    ],
+                    "worksFor": {
+                        "@type": "Organization",
+                        "name": "Comend",
+                        "url": "https://www.comendcare.com/"
+                    },
+                    "knowsAbout": [
+                        "TypeScript",
+                        "Python",
+                        "Machine Learning",
+                        "Full-Stack Development",
+                        "Rare Disease Research Tools",
+                        "Tea Products"
+                    ],
+                    "alumniOf": {
+                        "@type": "CollegeOrUniversity",
+                        "name": "University of Waterloo"
+                    }
+                }
+            ]
+        }
+    </script>
 </head>
 <body>
 
 <!--    Right column-->
 <div class="container-fluid content">
-    <nav class="col-md-3 col-md-push-9">
+    <nav class="col-md-3 col-md-push-9" aria-label="Primary navigation">
         <ul>
-            <li><a href=index.html><h4>🏠 Home</h4></a></li>
-            <li><a href="https://flawnson.github.io/"><h4>📝 Blog</h4></a></li>
-            <li><a href="assets/images/Flawnson_Resume%20v10.1.pdf" target="_blank"><h4>📋 Resume</h4></a></li>
+            <li><a href="index.html"><h4>🏠 Home</h4></a></li>
+            <li><a href="https://flawnson.github.io/" target="_blank" rel="noopener noreferrer"><h4>📝 Blog</h4></a></li>
+            <li><a href="assets/images/Flawnson_Resume%20v10.1.pdf" target="_blank" rel="noopener noreferrer"><h4>📋 Resume</h4></a></li>
             <li><h4>🌙 <label class="switch">
                 <input type="checkbox" onclick="darkMode()">
                 <span class="slider round"></span>
@@ -65,105 +140,110 @@
 
         <hr>
 
-        <h2>✍️ Flitter</h2>
-        <div id="micro-posts">
-            <p>Loading...</p>
-        </div>
+        <section aria-labelledby="flitter-heading">
+            <h2 id="flitter-heading">✍️ Flitter</h2>
+            <div id="micro-posts">
+                <p>Loading...</p>
+            </div>
+        </section>
 
         <div class="hidden-xs hidden-sm">
-            <h2>❓ Q&A</h2>
-            <p><b>What do you build with?</b><br>
-                TypeScript, Python, SQL databases, Tailwind. Container-first.</p>
+            <section aria-labelledby="qa-heading-desktop">
+                <h2 id="qa-heading-desktop">❓ Q&amp;A</h2>
+                <p><b>What do you build with?</b><br>
+                    TypeScript, Python, SQL databases, Tailwind. Container-first.</p>
 
-            <p><b>What’s your setup?</b><br>
-                JetBrains IDEs with vim bindings for web development. Codex occassionally. Terminal-heavy workflows when
-                I used to train models.</p>
+                <p><b>What’s your setup?</b><br>
+                    JetBrains IDEs with vim bindings for web development. Codex occassionally. Terminal-heavy workflows when
+                    I used to train models.</p>
 
-            <p><b>What hardware are you on?</b><br>
-                At home, I work on my custom-built rig (AMD Ryzen 9 9950X, RTX 5090). At work, I use a 2020 MacBook Pro
-                M1.</p>
+                <p><b>What hardware are you on?</b><br>
+                    At home, I work on my custom-built rig (AMD Ryzen 9 9950X, RTX 5090). At work, I use a 2020 MacBook Pro
+                    M1.</p>
 
-            <p><b>What’s your dev style?</b><br>
-                Fast iteration. Idea → deployed quickly. Prefer shipping > overengineering.</p>
+                <p><b>What’s your dev style?</b><br>
+                    Fast iteration. Idea → deployed quickly. Prefer shipping > overengineering.</p>
 
-            <p><b>How do you decide what to build?</b><br>
-                Talk to users, look at data, rationalize how much positive impact I'd be making.</p>
+                <p><b>How do you decide what to build?</b><br>
+                    Talk to users, look at data, rationalize how much positive impact I'd be making.</p>
 
-            <p><b>Favorite AI tools?</b><br>
-                I'm model agnostic and default to my locally-run SOTA models (currently Qwen3-Coder 30B) and switch
-                between GPT, Gemini, and Claude situationally.</p>
+                <p><b>Favorite AI tools?</b><br>
+                    I'm model agnostic and default to my locally-run SOTA models (currently Qwen3-Coder 30B) and switch
+                    between GPT, Gemini, and Claude situationally.</p>
 
-            <p><b>How do you use AI?</b><br>
-                Well-scoped small context window one-shottable tasks, or exploring multiple ideas/avenues in parallel.
-            </p>
+                <p><b>How do you use AI?</b><br>
+                    Well-scoped small context window one-shottable tasks, or exploring multiple ideas/avenues in parallel.
+                </p>
 
-            <p><b>What do you suck at?</b><br>
-                Writing and updating tickets, working on something I don't believe in, stepping away from a problem.</p>
+                <p><b>What do you suck at?</b><br>
+                    Writing and updating tickets, working on something I don't believe in, stepping away from a problem.</p>
 
-            <p><b>What's your cat's name?</b><br>
-                <a href="https://www.instagram.com/pipiopaloma/">Paloma</a> is a tiny 4.5-pound Siamese 🐱 we adopted
-                from a rescue.</p>
+                <p><b>What's your cat's name?</b><br>
+                    <a href="https://www.instagram.com/pipiopaloma/" target="_blank" rel="noopener noreferrer">Paloma</a> is a tiny 4.5-pound Siamese 🐱 we adopted
+                    from a rescue.</p>
 
-            <p><b>What bike do you have?</b><br>
-                A 2023 Yamaha MT-03.</p>
+                <p><b>What bike do you have?</b><br>
+                    A 2023 Yamaha MT-03.</p>
+            </section>
         </div>
     </nav>
 
     <!--    Left column-->
     <div class="col-md-3 col-md-pull-3">
-        <div class="header">
+        <header class="header">
             <h1>👋 Hi I'm Flawnson</h1>
-        </div>
-        <img class="profile center-block img-responsive" src="assets/images/profile 2.jpg" alt="Profile Picture">
+        </header>
+        <img class="profile center-block img-responsive" src="assets/images/profile 2.jpg" alt="Portrait of Flawnson Tong" fetchpriority="high" decoding="async">
         <p> I'm a former ML engineer turned full-stack developer. I used to work a lot with Graph Neural Networks and
             NLP models.
+        </p>
         <p> I believe in function over form, that done is better than perfect, and that data outweighs intuition.</p>
         <p> I'm an avid 🎹 player, cautious 🏍️ rider, casual 🏸 enjoyer, and an abysmal 🥏 tosser.</p>
         <p> Given free time, I pander to and moderate the (small but growing)
-            <a href="https://www.reddit.com/r/GeometricDeepLearning/">Geometric Deep Learning subreddit. </a>
+            <a href="https://www.reddit.com/r/GeometricDeepLearning/" target="_blank" rel="noopener noreferrer">Geometric Deep Learning subreddit.</a>
         </p>
 
         <hr>
 
-        <ul class="network-icon fa-ul center-block">
+        <ul class="network-icon fa-ul center-block" aria-label="Social links">
             <li>
-                <span class=fa-li">
-                <a class="icon" href="https://github.com/flawnson/" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="https://github.com/flawnson/" target="_blank" rel="me noopener noreferrer" aria-label="GitHub">
                     <i class="fab fa-github fa-fw fa-2x"></i>
                 </a>
                 </span>
             </li>
             <li>
-                <span class=fa-li">
-                <a class="icon" href="https://twitter.com/flawnsonTong" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="https://twitter.com/flawnsonTong" target="_blank" rel="me noopener noreferrer" aria-label="Twitter">
                     <i class="fab fa-twitter fa-fw fa-2x"></i>
                 </a>
                 </span>
             </li>
             <li>
-                <span class=fa-li">
-                <a class="icon" href="https://medium.com/@flawnsontong1" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="https://medium.com/@flawnsontong1" target="_blank" rel="me noopener noreferrer" aria-label="Medium">
                     <i class="fab fa-medium fa-fw fa-2x"></i>
                 </a>
                 </span>
             </li>
             <li>
-                <span class=fa-li">
-                <a class="icon" href="https://www.linkedin.com/in/flawnson/" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="https://www.linkedin.com/in/flawnson/" target="_blank" rel="me noopener noreferrer" aria-label="LinkedIn">
                     <i class="fab fa-linkedin fa-fw fa-2x"></i>
                 </a>
                 </span>
             </li>
             <li>
-                <span class=fa-li">
-                <a class="icon" href="https://open.spotify.com/user/pychie?si=6ODQ6bZoRfGNxItRbo7OJQ" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="https://open.spotify.com/user/pychie?si=6ODQ6bZoRfGNxItRbo7OJQ" target="_blank" rel="me noopener noreferrer" aria-label="Spotify">
                     <i class="fab fa-spotify fa-fw fa-2x"></i>
                 </a>
                 </span>
             </li>
             <li>
-                <span class=fa-li">
-                <a class="icon" href="mailto:flawnson.tong@gmail.com?subject=Reaching out" target="_blank">
+                <span class="fa-li">
+                <a class="icon" href="mailto:flawnson.tong@gmail.com?subject=Reaching out" target="_blank" rel="noopener noreferrer" aria-label="Email Flawnson">
                     <i class="far fa-envelope fa-fw fa-2x"></i>
                 </a>
                 </span>
@@ -174,193 +254,196 @@
 
         <div>
             <iframe loading="lazy" class="center-block img-responsive" frameborder="0" scrolling="no" marginheight="0" marginwidth="0"
-                    src="https://www.openstreetmap.org/export/embed.html?bbox=-79.3986225128174%2C43.64461589616045%2C-79.36944007873537%2C43.66215942544592&amp;layer=mapnik&amp;marker=43.65340749454497%2C-79.38403129577637"></iframe>
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=-79.3986225128174%2C43.64461589616045%2C-79.36944007873537%2C43.66215942544592&amp;layer=mapnik&amp;marker=43.65340749454497%2C-79.38403129577637" title="Map showing downtown Toronto"></iframe>
             <br/>
             <iframe loading="lazy" class="center-block img-responsive" id="spotify-embed"
                     src="https://open.spotify.com/embed/playlist/6LtEXeiXF01ftHFfgDMliu" frameborder="0"
-                    allowtransparency="true" allow="encrypted-media"></iframe>
+                    allowtransparency="true" allow="encrypted-media" title="Spotify playlist embed"></iframe>
         </div>
     </div>
 
     <!--    Center column-->
-    <div class="col-md-6 col-md-pull-3">
-        <h2>👨‍💻 What I'm working on</h2>
-        <p>I build products that make the world a better place.</p>
-        <p>Most recently I've been working with my friend and co-founder <a
-                href="https://www.linkedin.com/in/albert-yq-wang/" target="_blank">Albert Wang</a> on <a
-                href="https://www.comendcare.com/" target="_blank">Comend</a>. We build tools for the rare disease
-            community to help them become research ready.</p>
-        <p>I drink a lot of 🍵 and enjoy the culture. I'm building <a href="http://teatico.com/"
-                                                                     target="_blank">Teatico</a>, an encyclopedia of tea
-            products with my girlfriend <a href="https://www.linkedin.com/in/ramyzhang/" target="_blank">Ramy Zhang</a>.
-        </p>
-        <p>I release original piano compositions on <a href="https://www.youtube.com/channel/UCvr4LPREh7HlJObRAoDmwTQ"
-                                                       target="_blank">YouTube</a> and <a
-                href="https://open.spotify.com/artist/5T8tAOwdQrk0CZB6DkQkII?si=Xj1AwndXSfGaGT5aINnUhg" target="_blank">Spotify</a>.
-        </p>
+    <main class="col-md-6 col-md-pull-3">
+        <section aria-labelledby="working-on-heading">
+            <h2 id="working-on-heading">👨‍💻 What I'm working on</h2>
+            <p>I build products that make the world a better place.</p>
+            <p>Most recently I've been working with my friend and co-founder <a
+                    href="https://www.linkedin.com/in/albert-yq-wang/" target="_blank" rel="noopener noreferrer">Albert Wang</a> on <a
+                    href="https://www.comendcare.com/" target="_blank" rel="noopener noreferrer">Comend</a>. We build tools for the rare disease
+                community to help them become research ready.</p>
+            <p>I drink a lot of 🍵 and enjoy the culture. I'm building <a href="http://teatico.com/"
+                                                                         target="_blank" rel="noopener noreferrer">Teatico</a>, an encyclopedia of tea
+                products with my girlfriend <a href="https://www.linkedin.com/in/ramyzhang/" target="_blank" rel="noopener noreferrer">Ramy Zhang</a>.
+            </p>
+            <p>I release original piano compositions on <a href="https://www.youtube.com/channel/UCvr4LPREh7HlJObRAoDmwTQ"
+                                                           target="_blank" rel="noopener noreferrer">YouTube</a> and <a
+                    href="https://open.spotify.com/artist/5T8tAOwdQrk0CZB6DkQkII?si=Xj1AwndXSfGaGT5aINnUhg" target="_blank" rel="noopener noreferrer">Spotify</a>.
+            </p>
 
-        <p id="last-commit-line">
-            ⏱️ Time since my last commit:
-            <span id="last-commit-timer" style="font-weight: 700;">Loading...</span>
-        </p>
+            <p id="last-commit-line">
+                ⏱️ Time since my last commit:
+                <span id="last-commit-timer" style="font-weight: 700;">Loading...</span>
+            </p>
+        </section>
         <!--        <p>For the latest updates on what I'm doing, my setup, or just to dig a bit more about me, visit <a href="https://flawnson.github.io/" target="_blank">my blog 📝.</a></p>-->
         <hr>
 
-        <h2>📚 What I've worked on</h2>
-        <p><a href="https://www.comendcare.com/" target="_blank"><b>Comend</b></a> - <i>Co-founder and CTO</i></p>
-        <p><b>Feb 2023 - Present</b><i> - Toronto, Canada</i></p>
-        <ul>
-            <li>Built and launched <a href="https://comend.io/" target="_blank">our core platform</a>, helping patient
-                groups organize, share, and find partners for their research.
-            </li>
-            <li>Built and launched <a href="https://www.librarey.com/" target="_blank">Librarey</a>, a search platform
-                to help rare families find resources.
-            </li>
-            <li>Grew the team to 4 and onboarded over 50 patient groups with over 140 research plans (and counting).
-            </li>
-            <li>Lead engineering efforts across all products, coordinated workloads, managed tickets, built E2E and unit
-                testing suites, organized monorepo and project architecture, monitored deployments and containers.
-            </li>
-            <li>Raised over $700K in pre-seed funding to date from <a href="https://www.character.vc/" target="_blank">Character
-                Labs</a>, <a href="https://drivecapital.com/" target="_blank">Drive Capital</a>, and <a
-                    href="https://www.pharmstars.com/" target="_blank">PharmStars</a>.
-            </li>
-            <!--            <li>Building <a href="https://scimantic.com/" target="_blank">Scimantic</a>, a platform for generating plain language translations of academic and medical literature in the rare disease space with the goal of improving patient education.</li>-->
-        </ul>
-        <p><a href="https://www.joinef.com/" target="_blank"><b>Entrepreneur First (EF)</b></a> - <i>Founder in
-            Residence</i></p>
-        <p><b>March 2022 - Feb 2023</b><i> - Toronto, Canada</i></p>
-        <ul>
-            <li>Went through the formal process of finding strong co-founder fit and identifying problems worth solving
-                and having useful customer conversations.
-            </li>
-            <li>Iterated on many ideas through many rounds of product validation with several potential cofounders.</li>
-            <li>Got very comfortable with sales tools like LinkedIn Sales Navigator, Apollo.io, Klenty, and Reply.io.
-            </li>
-        </ul>
-        <p><a href="https://www.kebotix.com/" target="_blank"><b>Kebotix Inc.</b></a> - <i>Machine Learning Developer
-            Intern</i></p>
-        <p><b>Sept 2020 - May 2021</b><i> - Boston, MA</i></p>
-        <ul>
-            <li>Developed a generative Transformer model optimized with a genetic algorithm for discovering organic and
-                inorganic molecules of interest.
-            </li>
-            <li>Contributing author of "Molecular discovery with conditional generative transformers coupled with
-                genetic algorithms" (unpublished).
-            </li>
-        </ul>
-        <p><a href="https://www.relationrx.com/" target="_blank"><b>Relation Therapeutics</b></a> - <i>Machine Learning
-            Research Intern</i></p>
-        <p><b>Sept 2019 - May 2020</b><i> - London, UK</i></p>
-        <ul>
-            <li>Developed novel GNN models for predicting the druggability and classifying the types of proteins.</li>
-            <li>Built tuning and testing pipeline to optimize model parameters and run configurations.</li>
-            <li>Contributing author of "Sparse Dynamic Distribution Decomposition: Efficient Integration of Trajectory
-                and Snapshot Time Series Data".
-            </li>
-        </ul>
-        <p><a href="https://github.com/flawnson" target="_blank"><b>ML for Chem/Bio-informatics</b></a> -
-            <i>Personal Projects</i></p>
-        <p><b>Oct 2018 - June 2019</b><i> - Toronto, Canada</i></p>
-        <ul>
-            <li>Built a series of pipelines for preprocessing several chemical and biological data assays.</li>
-            <li>Built various
-                <a href="https://github.com/flawnson/GNNs_ProteinStructure" target="_blank">predictive,</a>
-                <a href="https://github.com/flawnson/Multivariate_molecular_weight-predictor_NN" target="_blank">multivariate,</a>
-                and
-                <a href="https://github.com/flawnson/Molecule_generating_RNN" target="_blank">generative,</a>
-                ML models to train on processed data.
-            </li>
-            <li>
-                <a href="https://flawnsontong.medium.com/what-is-geometric-deep-learning-b2adb662d91d" target="_blank">Wrote</a>
-                <a href="https://medium.com/data-science/graph-theory-and-deep-learning-know-hows-6556b0e9891b"
-                   target="_blank">a</a>
-                <a href="https://medium.com/data-science/overview-of-deep-learning-on-graph-embeddings-4305c10ad4a4"
-                   target="_blank">series</a>
-                <a href="https://medium.com/data-science/graph-convolutional-networks-for-geometric-deep-learning-1faf17dee008"
-                   target="_blank">of</a>
-                <a href="https://flawnsontong.medium.com/attention-and-gates-for-geometric-deep-learning-435deb9df9b"
-                   target="_blank">articles</a>
-                on the various methods of Geometric Deep Learning and Graph Learning.
-            </li>
-        </ul>
-        <p><a href="https://medium.com/cibc-live-labs/about-live-labs-b8aebdd8815a" target="_blank"><b>Canadian Imperial
-            Bank of Commerce (CIBC)</b></a> - <i>Summer Intern</i></p>
-        <p><b>June 2018 - Sept 2018</b><i> - Toronto, Canada</i></p>
-        <ul>
-            <li>Summer intern at CIBC Live Labs as front end developer and designer for an AR app.</li>
-            <li>Designed basic UI/UX for app, collaborated with backend developers throughout development.</li>
-            <li>Performed user/guerrilla testing of prototype and aggregated feedback for improvements.</li>
-        </ul>
+        <section aria-labelledby="worked-on-heading">
+            <h2 id="worked-on-heading">📚 What I've worked on</h2>
+            <p><a href="https://www.comendcare.com/" target="_blank" rel="noopener noreferrer"><b>Comend</b></a> - <i>Co-founder and CTO</i></p>
+            <p><b>Feb 2023 - Present</b><i> - Toronto, Canada</i></p>
+            <ul>
+                <li>Built and launched <a href="https://comend.io/" target="_blank" rel="noopener noreferrer">our core platform</a>, helping patient
+                    groups organize, share, and find partners for their research.
+                </li>
+                <li>Built and launched <a href="https://www.librarey.com/" target="_blank" rel="noopener noreferrer">Librarey</a>, a search platform
+                    to help rare families find resources.
+                </li>
+                <li>Grew the team to 4 and onboarded over 50 patient groups with over 140 research plans (and counting).
+                </li>
+                <li>Lead engineering efforts across all products, coordinated workloads, managed tickets, built E2E and unit
+                    testing suites, organized monorepo and project architecture, monitored deployments and containers.
+                </li>
+                <li>Raised over $700K in pre-seed funding to date from <a href="https://www.character.vc/" target="_blank" rel="noopener noreferrer">Character
+                    Labs</a>, <a href="https://drivecapital.com/" target="_blank" rel="noopener noreferrer">Drive Capital</a>, and <a
+                        href="https://www.pharmstars.com/" target="_blank" rel="noopener noreferrer">PharmStars</a>.
+                </li>
+            </ul>
+            <p><a href="https://www.joinef.com/" target="_blank" rel="noopener noreferrer"><b>Entrepreneur First (EF)</b></a> - <i>Founder in
+                Residence</i></p>
+            <p><b>March 2022 - Feb 2023</b><i> - Toronto, Canada</i></p>
+            <ul>
+                <li>Went through the formal process of finding strong co-founder fit and identifying problems worth solving
+                    and having useful customer conversations.
+                </li>
+                <li>Iterated on many ideas through many rounds of product validation with several potential cofounders.</li>
+                <li>Got very comfortable with sales tools like LinkedIn Sales Navigator, Apollo.io, Klenty, and Reply.io.
+                </li>
+            </ul>
+            <p><a href="https://www.kebotix.com/" target="_blank" rel="noopener noreferrer"><b>Kebotix Inc.</b></a> - <i>Machine Learning Developer
+                Intern</i></p>
+            <p><b>Sept 2020 - May 2021</b><i> - Boston, MA</i></p>
+            <ul>
+                <li>Developed a generative Transformer model optimized with a genetic algorithm for discovering organic and
+                    inorganic molecules of interest.
+                </li>
+                <li>Contributing author of "Molecular discovery with conditional generative transformers coupled with
+                    genetic algorithms" (unpublished).
+                </li>
+            </ul>
+            <p><a href="https://www.relationrx.com/" target="_blank" rel="noopener noreferrer"><b>Relation Therapeutics</b></a> - <i>Machine Learning
+                Research Intern</i></p>
+            <p><b>Sept 2019 - May 2020</b><i> - London, UK</i></p>
+            <ul>
+                <li>Developed novel GNN models for predicting the druggability and classifying the types of proteins.</li>
+                <li>Built tuning and testing pipeline to optimize model parameters and run configurations.</li>
+                <li>Contributing author of "Sparse Dynamic Distribution Decomposition: Efficient Integration of Trajectory
+                    and Snapshot Time Series Data".
+                </li>
+            </ul>
+            <p><a href="https://github.com/flawnson" target="_blank" rel="noopener noreferrer"><b>ML for Chem/Bio-informatics</b></a> -
+                <i>Personal Projects</i></p>
+            <p><b>Oct 2018 - June 2019</b><i> - Toronto, Canada</i></p>
+            <ul>
+                <li>Built a series of pipelines for preprocessing several chemical and biological data assays.</li>
+                <li>Built various
+                    <a href="https://github.com/flawnson/GNNs_ProteinStructure" target="_blank" rel="noopener noreferrer">predictive,</a>
+                    <a href="https://github.com/flawnson/Multivariate_molecular_weight-predictor_NN" target="_blank" rel="noopener noreferrer">multivariate,</a>
+                    and
+                    <a href="https://github.com/flawnson/Molecule_generating_RNN" target="_blank" rel="noopener noreferrer">generative,</a>
+                    ML models to train on processed data.
+                </li>
+                <li>
+                    <a href="https://flawnsontong.medium.com/what-is-geometric-deep-learning-b2adb662d91d" target="_blank" rel="noopener noreferrer">Wrote</a>
+                    <a href="https://medium.com/data-science/graph-theory-and-deep-learning-know-hows-6556b0e9891b" target="_blank" rel="noopener noreferrer">a</a>
+                    <a href="https://medium.com/data-science/overview-of-deep-learning-on-graph-embeddings-4305c10ad4a4" target="_blank" rel="noopener noreferrer">series</a>
+                    <a href="https://medium.com/data-science/graph-convolutional-networks-for-geometric-deep-learning-1faf17dee008" target="_blank" rel="noopener noreferrer">of</a>
+                    <a href="https://flawnsontong.medium.com/attention-and-gates-for-geometric-deep-learning-435deb9df9b" target="_blank" rel="noopener noreferrer">articles</a>
+                    on the various methods of Geometric Deep Learning and Graph Learning.
+                </li>
+            </ul>
+            <p><a href="https://medium.com/cibc-live-labs/about-live-labs-b8aebdd8815a" target="_blank" rel="noopener noreferrer"><b>Canadian Imperial
+                Bank of Commerce (CIBC)</b></a> - <i>Summer Intern</i></p>
+            <p><b>June 2018 - Sept 2018</b><i> - Toronto, Canada</i></p>
+            <ul>
+                <li>Summer intern at CIBC Live Labs as front end developer and designer for an AR app.</li>
+                <li>Designed basic UI/UX for app, collaborated with backend developers throughout development.</li>
+                <li>Performed user/guerrilla testing of prototype and aggregated feedback for improvements.</li>
+            </ul>
+        </section>
 
         <hr>
 
-        <h1>📜 Publications</h1>
-        <div class="panel-group">
-            <div class="panel panel-default">
-                <img class="img-responsive" src="assets/images/Sparse-DDD.png" alt="Sparse DDD">
-                <div class="panel-heading"><h4>Sparse Dynamic Distribution Decomposition: Efficient Integration of
-                    Trajectory and Snapshot Time Series Data</h4>
-                    <p><i>Jake P. Taylor-King, Cristian Regep, Jyothish Soman, Flawnson Tong, Catalina Cangea, Charlie
-                        Roberts</i></p>
-                </div>
-                <div class="panel-body panel-text"><p>DDD allows for the fitting of continuous-time Markov chains over
-                    these basis functions and as a result continuously maps between distributions. The number of
-                    parameters in DDD scales by the square of the number of basis functions; we reformulate the problem
-                    and restrict the method to compact basis functions which leads to the inference of sparse matrices
-                    only -- hence reducing the number of parameters.</p></div>
-                <div class="panel-footer">
-                    <button class="btn btn-default btn-xs"><a href="https://arxiv.org/pdf/2006.05138.pdf">PDF</a>
-                    </button>
-                    <button class="btn btn-default btn-xs"><a
-                            href="https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=flawnson&btnG=#d=gs_cit&u=%2Fscholar%3Fq%3Dinfo%3AM9TiUq_KUHwJ%3Ascholar.google.com%2F%26output%3Dcite%26scirp%3D0%26hl%3Den">Cite</a>
-                    </button>
-                    <button class="btn btn-default btn-xs"><a href="https://github.com/RelationRx/SparseDDD">Code</a>
-                    </button>
-                </div>
+        <section aria-labelledby="publications-heading">
+            <h1 id="publications-heading">📜 Publications</h1>
+            <div class="panel-group">
+                <article class="panel panel-default">
+                    <img class="img-responsive" src="assets/images/Sparse-DDD.png" alt="Sparse Dynamic Distribution Decomposition publication preview" loading="lazy" decoding="async">
+                    <div class="panel-heading"><h4>Sparse Dynamic Distribution Decomposition: Efficient Integration of
+                        Trajectory and Snapshot Time Series Data</h4>
+                        <p><i>Jake P. Taylor-King, Cristian Regep, Jyothish Soman, Flawnson Tong, Catalina Cangea, Charlie
+                            Roberts</i></p>
+                    </div>
+                    <div class="panel-body panel-text"><p>DDD allows for the fitting of continuous-time Markov chains over
+                        these basis functions and as a result continuously maps between distributions. The number of
+                        parameters in DDD scales by the square of the number of basis functions; we reformulate the problem
+                        and restrict the method to compact basis functions which leads to the inference of sparse matrices
+                        only -- hence reducing the number of parameters.</p></div>
+                    <div class="panel-footer">
+                        <button class="btn btn-default btn-xs"><a href="https://arxiv.org/pdf/2006.05138.pdf" target="_blank" rel="noopener noreferrer">PDF</a>
+                        </button>
+                        <button class="btn btn-default btn-xs"><a
+                                href="https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=flawnson&btnG=#d=gs_cit&u=%2Fscholar%3Fq%3Dinfo%3AM9TiUq_KUHwJ%3Ascholar.google.com%2F%26output%3Dcite%26scirp%3D0%26hl%3Den" target="_blank" rel="noopener noreferrer">Cite</a>
+                        </button>
+                        <button class="btn btn-default btn-xs"><a href="https://github.com/RelationRx/SparseDDD" target="_blank" rel="noopener noreferrer">Code</a>
+                        </button>
+                    </div>
+                </article>
             </div>
-        </div>
+        </section>
 
         <div class="visible-xs-block visible-sm-block">
             <hr>
 
-            <h2>❓ Q&A</h2>
-            <p><b>What do you build with?</b><br>
-                TypeScript, Python, SQL databases, Tailwind. Container-first.</p>
+            <section aria-labelledby="qa-heading-mobile">
+                <h2 id="qa-heading-mobile">❓ Q&amp;A</h2>
+                <p><b>What do you build with?</b><br>
+                    TypeScript, Python, SQL databases, Tailwind. Container-first.</p>
 
-            <p><b>What’s your setup?</b><br>
-                JetBrains IDEs with vim bindings for web development. Codex occassionally. Terminal-heavy workflows when
-                I used to train models.</p>
+                <p><b>What’s your setup?</b><br>
+                    JetBrains IDEs with vim bindings for web development. Codex occassionally. Terminal-heavy workflows when
+                    I used to train models.</p>
 
-            <p><b>What hardware are you on?</b><br>
-                At home, I work on my custom-built rig (AMD Ryzen 9 9950X, RTX 5090). At work, I use a 2020 MacBook Pro
-                M1.</p>
+                <p><b>What hardware are you on?</b><br>
+                    At home, I work on my custom-built rig (AMD Ryzen 9 9950X, RTX 5090). At work, I use a 2020 MacBook Pro
+                    M1.</p>
 
-            <p><b>What’s your dev style?</b><br>
-                Fast iteration. Idea → deployed quickly. Prefer shipping > overengineering.</p>
+                <p><b>What’s your dev style?</b><br>
+                    Fast iteration. Idea → deployed quickly. Prefer shipping > overengineering.</p>
 
-            <p><b>How do you decide what to build?</b><br>
-                Talk to users, look at data, rationalize how much positive impact I'd be making.</p>
+                <p><b>How do you decide what to build?</b><br>
+                    Talk to users, look at data, rationalize how much positive impact I'd be making.</p>
 
-            <p><b>Favorite AI tools?</b><br>
-                I'm model agnostic and default to my locally-run SOTA models (currently Qwen3-Coder 30B) and switch
-                between GPT, Gemini, and Claude situationally.</p>
+                <p><b>Favorite AI tools?</b><br>
+                    I'm model agnostic and default to my locally-run SOTA models (currently Qwen3-Coder 30B) and switch
+                    between GPT, Gemini, and Claude situationally.</p>
 
-            <p><b>How do you use AI?</b><br>
-                Well-scoped small context window one-shottable tasks, or exploring multiple ideas/avenues in parallel.
-            </p>
+                <p><b>How do you use AI?</b><br>
+                    Well-scoped small context window one-shottable tasks, or exploring multiple ideas/avenues in parallel.
+                </p>
 
-            <p><b>What do you suck at?</b><br>
-                Writing and updating tickets, working on something I don't believe in, stepping away from a problem.</p>
+                <p><b>What do you suck at?</b><br>
+                    Writing and updating tickets, working on something I don't believe in, stepping away from a problem.</p>
 
-            <p><b>What's your cat's name?</b><br>
-                <a href="https://www.instagram.com/pipiopaloma/">Paloma</a> is a tiny 4.5-pound Siamese 🐱 we adopted
-                from a rescue.</p>
+                <p><b>What's your cat's name?</b><br>
+                    <a href="https://www.instagram.com/pipiopaloma/" target="_blank" rel="noopener noreferrer">Paloma</a> is a tiny 4.5-pound Siamese 🐱 we adopted
+                    from a rescue.</p>
 
-            <p><b>What bike do you have?</b><br>
-                A 2023 Yamaha MT-03.</p>
+                <p><b>What bike do you have?</b><br>
+                    A 2023 Yamaha MT-03.</p>
+            </section>
         </div>
-    </div>
+    </main>
 </div>
 
 <!-- Footer -->
