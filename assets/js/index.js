@@ -91,18 +91,39 @@ function getLastCommitUrl() {
     return `${getApiBaseUrl()}/api/github-last-commit.php`;
 }
 
+async function fetchJsonWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const res = await fetch(url, {
+            signal: controller.signal,
+            cache: "no-store"
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+        }
+
+        return data;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+let lastCommitInterval = null;
+
+const microPostsRequest = fetchJsonWithTimeout(getMicroPostsUrl(), 5000);
+const lastCommitRequest = fetchJsonWithTimeout(getLastCommitUrl(), 5000);
+
 async function loadMicroPosts() {
     const root = document.getElementById("micro-posts");
     if (!root) return;
 
     try {
-        const res = await fetch(getMicroPostsUrl(), { cache: "no-store" });
-
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await microPostsRequest;
         renderMicroPosts(data.posts || []);
     } catch (err) {
         console.error(err);
@@ -110,24 +131,29 @@ async function loadMicroPosts() {
     }
 }
 
-let lastCommitInterval = null;
-
-async function loadLastCommitTimer() {
-    const statusEl = document.getElementById("last-commit-status");
-    const timerEl = document.getElementById("last-commit-timer");
-
-    if (!statusEl || !timerEl) return;
+async function refreshMicroPosts() {
+    const root = document.getElementById("micro-posts");
+    if (!root) return;
 
     try {
-        const res = await fetch(getLastCommitUrl(), { cache: "no-store" });
-        const data = await res.json();
+        const data = await fetchJsonWithTimeout(getMicroPostsUrl(), 5000);
+        renderMicroPosts(data.posts || []);
+    } catch (err) {
+        console.error(err);
+        root.innerHTML = "<p>Could not load posts.</p>";
+    }
+}
 
-        if (!res.ok) {
-            throw new Error(data.error || "Failed to fetch last commit.");
-        }
+async function loadLastCommitTimer() {
+    const timerEl = document.getElementById("last-commit-timer");
 
+    if (!timerEl) return;
+
+    timerEl.textContent = "Loading...";
+
+    try {
+        const data = await lastCommitRequest;
         const lastCommitDate = new Date(data.created_at);
-        const repoName = data.repo || "unknown repo";
 
         if (Number.isNaN(lastCommitDate.getTime())) {
             throw new Error("Invalid commit timestamp received.");
@@ -160,14 +186,11 @@ async function loadLastCommitTimer() {
 
         lastCommitInterval = setInterval(render, 1000);
     } catch (error) {
-        statusEl.textContent = "Could not load last commit timer.";
-        timerEl.textContent = "";
+        timerEl.textContent = "Could not load";
         console.error(error);
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadMicroPosts();
-    loadLastCommitTimer();
-    setInterval(loadMicroPosts, 15000);
-});
+loadMicroPosts();
+loadLastCommitTimer();
+setInterval(refreshMicroPosts, 15000);
