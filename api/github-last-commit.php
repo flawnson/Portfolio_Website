@@ -16,23 +16,22 @@ if (in_array($origin, $allowedOrigins, true)) {
 }
 
 header('Vary: Origin');
-header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-function fail(int $status, string $message, array $extra = []): void {
+header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+function fail(int $status, string $message): void {
     http_response_code($status);
-    echo json_encode(array_merge(['error' => $message], $extra), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    echo json_encode(['error' => $message], JSON_PRETTY_PRINT);
     exit;
 }
 
 $tokenPath = '/home/flawhvna/.github-last-commit-token';
 
 if (!file_exists($tokenPath)) {
-    fail(500, 'Token file not found.', ['path' => $tokenPath]);
-}
-
-if (!is_readable($tokenPath)) {
-    fail(500, 'Token file is not readable.', ['path' => $tokenPath]);
+    fail(500, 'Token file not found.');
 }
 
 $token = trim((string) file_get_contents($tokenPath));
@@ -55,86 +54,47 @@ curl_setopt_array($ch, [
 ]);
 
 $response = curl_exec($ch);
-
-if ($response === false) {
-    $curlError = curl_error($ch);
-    curl_close($ch);
-    fail(502, 'GitHub request failed.', ['details' => $curlError]);
-}
-
 $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
 curl_close($ch);
 
-$data = json_decode($response, true);
-if (!is_array($data)) {
-    fail(500, 'Invalid GitHub response.', ['raw' => substr((string) $response, 0, 500)]);
+if ($response === false) {
+    fail(502, 'GitHub request failed: ' . $curlError);
 }
 
 if ($httpCode >= 400) {
-    fail($httpCode, 'GitHub API returned HTTP ' . $httpCode, ['response' => $data]);
+    fail($httpCode, 'GitHub API returned HTTP ' . $httpCode);
+}
+
+$data = json_decode($response, true);
+if (!is_array($data)) {
+    fail(500, 'Invalid GitHub response.');
 }
 
 $latestPush = null;
-$latestCommit = null;
-$latestTimestamp = null;
 
 foreach ($data as $event) {
     if (($event['type'] ?? null) !== 'PushEvent') {
         continue;
     }
 
-    $eventCreatedAt = $event['created_at'] ?? null;
-    if (!$eventCreatedAt) {
+    $createdAt = $event['created_at'] ?? null;
+    if (!$createdAt) {
         continue;
     }
 
-    $commits = $event['payload']['commits'] ?? [];
-    if (!is_array($commits) || $commits === []) {
-        continue;
-    }
-
-    $headSha = $event['payload']['head'] ?? null;
-    $selectedCommit = null;
-
-    if ($headSha) {
-        foreach ($commits as $commit) {
-            if (($commit['sha'] ?? null) === $headSha) {
-                $selectedCommit = $commit;
-                break;
-            }
-        }
-    }
-
-    if ($selectedCommit === null) {
-        $selectedCommit = end($commits);
-        if ($selectedCommit === false) {
-            continue;
-        }
-    }
-
-    $timestamp = strtotime($eventCreatedAt);
-    if ($timestamp === false) {
-        continue;
-    }
-
-    if ($latestTimestamp === null || $timestamp > $latestTimestamp) {
-        $latestTimestamp = $timestamp;
+    if ($latestPush === null || strtotime($createdAt) > strtotime($latestPush['created_at'])) {
         $latestPush = $event;
-        $latestCommit = $selectedCommit;
     }
 }
 
-if ($latestPush === null || $latestCommit === null) {
+if ($latestPush === null) {
     fail(404, 'No recent push event found.');
 }
 
 echo json_encode([
     'username' => $username,
     'repo' => $latestPush['repo']['name'] ?? null,
-    'created_at' => $latestPush['created_at'] ?? null,
+    'created_at' => $latestPush['created_at'],
     'public' => $latestPush['public'] ?? null,
-    'commit' => [
-        'sha' => $latestCommit['sha'] ?? null,
-        'message' => $latestCommit['message'] ?? null,
-    ],
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+], JSON_PRETTY_PRINT);
