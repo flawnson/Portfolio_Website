@@ -4,7 +4,7 @@ This repository contains the code for my website and blog as hosted on CPanel.
 
 ## Hosting
 Domains are managed on ~~GoDaddy~~ NameCheap, both .com and .ca domains are registered on my Comend account (TODO: transfer to my personal NameCheap account).
-Web hosting is managed by CPanel. You can access the CPanel admin by visiting the SSL page on the 
+Web hosting is managed by CPanel. You can access the CPanel admin via NameCheap's control panel [here](https://ap.www.namecheap.com/ProductList/HostingSubscriptions).
 You'll need to log into CPanel, pull the most recent changes, and deploy HEAD after making changes for them to appear on the production site.
 
 ## Libraries and Packages

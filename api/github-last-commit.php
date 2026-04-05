@@ -19,9 +19,6 @@ header('Vary: Origin');
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-header('Content-Type: application/json');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-
 function fail(int $status, string $message): void {
     http_response_code($status);
     echo json_encode(['error' => $message], JSON_PRETTY_PRINT);
@@ -41,7 +38,7 @@ if ($token === '') {
 
 $username = 'flawnson';
 
-$ch = curl_init("https://api.github.com/users/{$username}/events?per_page=100");
+$ch = curl_init('https://api.github.com/user/events?per_page=100');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER => [
@@ -72,29 +69,73 @@ if (!is_array($data)) {
 }
 
 $latestPush = null;
+$latestCommit = null;
+$latestTimestamp = null;
 
 foreach ($data as $event) {
     if (($event['type'] ?? null) !== 'PushEvent') {
         continue;
     }
 
-    $createdAt = $event['created_at'] ?? null;
-    if (!$createdAt) {
+    $eventCreatedAt = $event['created_at'] ?? null;
+    if (!$eventCreatedAt) {
         continue;
     }
 
-    if ($latestPush === null || strtotime($createdAt) > strtotime($latestPush['created_at'])) {
+    $commits = $event['payload']['commits'] ?? [];
+    if (!is_array($commits) || $commits === []) {
+        continue;
+    }
+
+    $headSha = $event['payload']['head'] ?? null;
+
+    $selectedCommit = null;
+
+    if ($headSha) {
+        foreach ($commits as $commit) {
+            if (($commit['sha'] ?? null) === $headSha) {
+                $selectedCommit = $commit;
+                break;
+            }
+        }
+    }
+
+    if ($selectedCommit === null) {
+        $selectedCommit = end($commits);
+        if ($selectedCommit === false) {
+            continue;
+        }
+    }
+
+    $timestamp = strtotime($eventCreatedAt);
+    if ($timestamp === false) {
+        continue;
+    }
+
+    if ($latestTimestamp === null || $timestamp > $latestTimestamp) {
+        $latestTimestamp = $timestamp;
         $latestPush = $event;
+        $latestCommit = $selectedCommit;
     }
 }
 
-if ($latestPush === null) {
+if ($latestPush === null || $latestCommit === null) {
     fail(404, 'No recent push event found.');
 }
 
 echo json_encode([
     'username' => $username,
     'repo' => $latestPush['repo']['name'] ?? null,
-    'created_at' => $latestPush['created_at'],
+    'repo_url' => isset($latestPush['repo']['name'])
+        ? 'https://github.com/' . $latestPush['repo']['name']
+        : null,
+    'created_at' => $latestPush['created_at'] ?? null,
     'public' => $latestPush['public'] ?? null,
+    'commit' => [
+        'sha' => $latestCommit['sha'] ?? null,
+        'message' => $latestCommit['message'] ?? null,
+        'url' => isset($latestPush['repo']['name'], $latestCommit['sha'])
+            ? 'https://github.com/' . $latestPush['repo']['name'] . '/commit/' . $latestCommit['sha']
+            : null,
+    ],
 ], JSON_PRETTY_PRINT);

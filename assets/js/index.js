@@ -53,6 +53,44 @@ function linkify(text) {
     );
 }
 
+function formatRelativeTime(dateInput) {
+    const date =
+        dateInput instanceof Date
+            ? dateInput
+            : new Date(String(dateInput).replace(" ", "T"));
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+
+    if (diffSeconds < 10) return "just now";
+    if (diffSeconds < 60) return `${diffSeconds} seconds ago`;
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes === 1) return "1 minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays < 30) return `${diffDays} days ago`;
+
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return "1 month ago";
+    if (diffMonths < 12) return `${diffMonths} months ago`;
+
+    const diffYears = Math.floor(diffDays / 365);
+    if (diffYears === 1) return "1 year ago";
+    return `${diffYears} years ago`;
+}
+
 function renderMicroPosts(posts) {
     const root = document.getElementById("micro-posts");
     if (!root) return;
@@ -65,11 +103,12 @@ function renderMicroPosts(posts) {
     root.innerHTML = posts.map((post) => {
         const safeBody = linkify(escapeHtml(post.body));
         const createdAt = new Date(post.created_at.replace(" ", "T"));
+        const relativeTime = formatRelativeTime(createdAt);
 
         return `
             <article class="micro-post" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
                 <p style="white-space: pre-wrap; margin-bottom: 0.4rem;">${safeBody}</p>
-                <small>${createdAt.toLocaleString()}</small>
+                <small>${relativeTime}</small>
             </article>
         `;
     }).join("");
