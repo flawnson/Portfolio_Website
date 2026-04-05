@@ -16,19 +16,23 @@ if (in_array($origin, $allowedOrigins, true)) {
 }
 
 header('Vary: Origin');
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-function fail(int $status, string $message): void {
+function fail(int $status, string $message, array $extra = []): void {
     http_response_code($status);
-    echo json_encode(['error' => $message], JSON_PRETTY_PRINT);
+    echo json_encode(array_merge(['error' => $message], $extra), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $tokenPath = '/home/flawhvna/.github-last-commit-token';
 
 if (!file_exists($tokenPath)) {
-    fail(500, 'Token file not found.');
+    fail(500, 'Token file not found.', ['path' => $tokenPath]);
+}
+
+if (!is_readable($tokenPath)) {
+    fail(500, 'Token file is not readable.', ['path' => $tokenPath]);
 }
 
 $token = trim((string) file_get_contents($tokenPath));
@@ -38,7 +42,7 @@ if ($token === '') {
 
 $username = 'flawnson';
 
-$ch = curl_init('https://api.github.com/user/events?per_page=100');
+$ch = curl_init("https://api.github.com/users/{$username}/events?per_page=100");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER => [
@@ -51,21 +55,23 @@ curl_setopt_array($ch, [
 ]);
 
 $response = curl_exec($ch);
-$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
 
 if ($response === false) {
-    fail(502, 'GitHub request failed: ' . $curlError);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+    fail(502, 'GitHub request failed.', ['details' => $curlError]);
 }
 
-if ($httpCode >= 400) {
-    fail($httpCode, 'GitHub API returned HTTP ' . $httpCode);
-}
+$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
 
 $data = json_decode($response, true);
 if (!is_array($data)) {
-    fail(500, 'Invalid GitHub response.');
+    fail(500, 'Invalid GitHub response.', ['raw' => substr((string) $response, 0, 500)]);
+}
+
+if ($httpCode >= 400) {
+    fail($httpCode, 'GitHub API returned HTTP ' . $httpCode, ['response' => $data]);
 }
 
 $latestPush = null;
@@ -88,7 +94,6 @@ foreach ($data as $event) {
     }
 
     $headSha = $event['payload']['head'] ?? null;
-
     $selectedCommit = null;
 
     if ($headSha) {
@@ -126,16 +131,10 @@ if ($latestPush === null || $latestCommit === null) {
 echo json_encode([
     'username' => $username,
     'repo' => $latestPush['repo']['name'] ?? null,
-    'repo_url' => isset($latestPush['repo']['name'])
-        ? 'https://github.com/' . $latestPush['repo']['name']
-        : null,
     'created_at' => $latestPush['created_at'] ?? null,
     'public' => $latestPush['public'] ?? null,
     'commit' => [
         'sha' => $latestCommit['sha'] ?? null,
         'message' => $latestCommit['message'] ?? null,
-        'url' => isset($latestPush['repo']['name'], $latestCommit['sha'])
-            ? 'https://github.com/' . $latestPush['repo']['name'] . '/commit/' . $latestCommit['sha']
-            : null,
     ],
-], JSON_PRETTY_PRINT);
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
