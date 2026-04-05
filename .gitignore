@@ -3,3 +3,8 @@
 
 public_html/api/microblog-config.php
 .github-last-commit-token
+/.idea/.gitignore
+/api/microblog-config.php
+/.idea/modules.xml
+/.idea/Portfolio_Website.iml
+/.idea/vcs.xml
