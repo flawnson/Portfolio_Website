@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="This section of Flawnson Tong's website is temporarily offline for maintenance.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+
+    <title>Temporarily Offline | Flawnson</title>
+    <link rel="canonical" href="https://flawnson.com/">
+    <link id="favicon" rel="icon" type="image/png" href="assets/images/Favicon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://pro.fontawesome.com" crossorigin>
+
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+          integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla&family=Roboto&display=swap">
+
+    <link rel="stylesheet" href="assets/css/index.css" type="text/css">
+    <link rel="stylesheet" href="assets/css/bootstrap.css" type="text/css">
+
+    <style>
+        .maintenance-wrap {
+            min-height: calc(100vh - 120px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .maintenance-card {
+            max-width: 760px;
+            width: 100%;
+            padding: 36px 28px;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        }
+
+        .maintenance-kicker {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: #f8f8f8;
+        }
+
+        .maintenance-card h1 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .maintenance-card p {
+            margin-bottom: 14px;
+            font-size: 1.7rem;
+            line-height: 1.7;
+        }
+
+        .maintenance-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 26px;
+        }
+
+        .maintenance-actions a {
+            display: inline-block;
+            padding: 10px 16px;
+            border: 1px solid #111;
+            border-radius: 999px;
+            color: #111;
+            text-decoration: none;
+            font-weight: 700;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .maintenance-actions a:hover,
+        .maintenance-actions a:focus {
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .maintenance-actions a.primary {
+            background: #111;
+            color: #fff;
+        }
+
+        body.dark-mode .maintenance-card {
+            background: #111;
+            border-color: #2d2d2d;
+            box-shadow: none;
+        }
+
+        body.dark-mode .maintenance-kicker {
+            background: #1a1a1a;
+            border-color: #2d2d2d;
+        }
+
+        body.dark-mode .maintenance-actions a {
+            color: #fff;
+            border-color: #fff;
+        }
+
+        body.dark-mode .maintenance-actions a.primary {
+            background: #fff;
+            color: #000;
+        }
+
+        @media (max-width: 767px) {
+            .maintenance-wrap {
+                min-height: auto;
+                padding: 40px 0;
+            }
+
+            .maintenance-card {
+                padding: 28px 22px;
+                border-radius: 10px;
+            }
+
+            .maintenance-card p {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid content">
+    <main>
+        <section class="maintenance-wrap" aria-labelledby="maintenance-heading">
+            <div class="maintenance-card">
+                <span class="maintenance-kicker">⚠️ Temporary maintenance</span>
+                <h1 id="maintenance-heading">This part of the site is being worked on and is temporarily offline.</h1>
+                <p>
+                    I’m making updates behind the scenes, so this page is unavailable for the moment.
+                </p>
+                <p>
+                    Please check back a little later.
+                </p>
+                <p>
+                    In the meantime, you can head back to the homepage or read the blog.
+                </p>
+
+                <div class="maintenance-actions">
+                    <a class="primary" href="/">🏠 Back to home</a>
+<!--                    <a href="https://flawnson.github.io/" target="_blank" rel="noopener noreferrer">📝 Visit the blog</a>-->
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<footer class="footer font-small blue pt-4">
+    <div class="footer-copyright text-center py-3">
+        <p>flawnson.com</p>
+    </div>
+</footer>
+</body>
+</html>
