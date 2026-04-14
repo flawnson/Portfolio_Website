@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building the Comend Feed - my favorite feature | Flawnson</title>
+    <meta name="description" content="I had the most fun building the Feed feature on Comend.">
+    <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
+    <link rel="stylesheet" href="/assets/css/bootstrap.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/blog.css">
+</head>
+<body>
+<div class="container blog-shell">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+
+            <header class="blog-header">
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
+                </p>
+                <div class="blog-meta">
+                    <time datetime="2025-07-24">July 24, 2025</time>
+                </div>
+                <h1 class="blog-title">
+                    Building the Comend Feed - my favorite feature
+                </h1>
+                <div class="blog-meta">
+                    <span class="blog-tags"><span class="blog-tag">comend</span><span class="blog-tag">engineering</span><span class="blog-tag">product</span></span>
+                </div>
+                <p class="blog-excerpt">I had the most fun building the Feed feature on Comend.</p>
+            </header>
+
+            <article class="blog-article">
+                <p>There are some <a href="https://www.wired.com/2016/09/everyone-hated-news-feed-then-it-became-facebooks-most-important-product/">great</a> <a href="https://www.eugenewei.com/blog/2019/2/19/status-as-a-service#:~:text=the%20greatest%20social%20capital%20creation%20event%20in%20tech%20history">articles</a> about how an effective feed can completely reshape the internet. Facebook’s News Feed turned social media into a battle royale of attention and FOMO. This isn’t that kind of feed.</p>
+<p>One of the late-stage features we built on Comend was the Feed. The Feed was our way of turning a messy mix of product activity into one clean, usable stream. Instead of only showing user actions, it was designed to pull together internal events, system-generated updates, and third party activity into a single timeline that could still respect scope, deduplicate reliably, and stay easy to query and render. I was particularly excited about tracking relevant content from sources like <a href="https://www.fda.gov/safety/medwatch-fda-safety-information-and-adverse-event-reporting-program/medwatch-rss-feed">FDA Alerts</a>, new <a href="https://www.ncbi.nlm.nih.gov/home/develop/api/">PubMed papers</a>, and activity from <a href="https://clinicaltrials.gov/find-studies/rss">clinicaltrials.gov</a>.</p>
+<p>The goal was to make the frontend feel simple without making the backend naïve. We wanted it to be performant without having to add any new technology (stick to our existing stack of Next.js and PostgreSQL), and still have the confidence that it can scale to thousands of posts from hundreds of sources. We wanted a feed that could scale across many event types and sources, normalize them into one stable model, and let the UI focus on presenting the right card rather than trying to interpret raw activity itself.</p>
+<p>Frontend for feed features is pretty simple:</p>
+<ul><li>fetch recent activity</li><li>sort chronologically</li><li>render cards in a list</li><li>add pagination</li></ul>
+<p>This works for very simple feeds, but it stops working once the activity in our product stops being uniform.</p>
+<p>In our case, activity came from a mix of places:</p>
+<ul><li>user actions inside the product</li><li>internal system events</li><li>ingest jobs</li><li>outside sources (third party APIs, RSS feeds, etc.)</li><li>events that belonged to a specific organization</li><li>events that were broader than any one organization</li></ul>
+<p>Some of that third party activity was not pushed to us in real time. Instead, we used a daily cron job (Vercel makes this easy) to poll and ingest new items from outside sources, then run them through the same normalization pipeline as everything else. Once we have that mix, a feed stops being “a list of recent things” and starts becoming a normalization problem.</p>
+<h1>The pattern that ended up working</h1>
+<p>The useful pattern was to split the system into layers instead of letting every feature write directly into a user-facing timeline.</p>
+<p>At a high level, it looked like this:</p>
+<ol><li><strong>Capture raw activity</strong></li><li><strong>Translate it into a canonical feed shape</strong></li><li><strong>Enforce scope and idempotency</strong></li><li><strong>Store the final feed item</strong></li><li><strong>Query it through a simple paginated API</strong></li><li><strong>Render by item type on the frontend</strong></li></ol>
+<p>That separation gave us a lot more flexibility than treating the feed as just another table in the app.</p>
+<h2>1. Capture raw activity</h2>
+<p>One of the best decisions was not writing directly into the feed table.</p>
+<p>Instead, raw events were first written into a <code>RawIngestEvent</code> model with fields like:</p>
+<ul><li><code>provider</code></li><li><code>eventType</code></li><li><code>externalId</code></li><li><code>occurredAt</code></li><li><code>payload</code></li><li><code>receivedAt</code></li><li><code>dedupeKey</code></li><li><code>status</code></li><li><code>error</code></li></ul>
+<p>The dedupe key was generated by hashing the provider, event type, and either the external ID or the payload itself. The write path then used an upsert, so retries did not automatically create duplicate ingest rows. This layer was especially useful for third party sources. Some of those were ingested by a daily cron job that polled external APIs and RSS feeds, wrote new entries into <code>RawIngestEvent</code>, and let the rest of the system treat them the same way as product-generated activity.</p>
+<p>That raw layer ended up doing a few important jobs for us:</p>
+<ul><li><strong>Durability:</strong> we had a record of what came in before it was interpreted</li><li><strong>Idempotency:</strong> retries were much safer</li><li><strong>Debuggability:</strong> we could inspect pending, failed, processed, and skipped events</li><li><strong>Flexibility:</strong> producers did not need to know the final feed shape</li></ul>
+<p>That distinction mattered a lot.</p>
+<p>A raw event is just:</p>
+<blockquote><p>something happened</p></blockquote>
+<p>&gt;</p>
+<p>A feed item is:</p>
+<blockquote><p>this is how we want to present that event to a user</p></blockquote>
+<p>&gt;</p>
+<p>Those aren’t the same thing, and treating them as separate concepts made the system much easier to extend. This separation also acts as a safety buffer between what we collect and what we show, and opens up the possibility for tracking activity that we want for ourselves but not for the feed.</p>
+<h2>2. Canonicalization is how the system becomes reusable</h2>
+<p>The next step was a processor that pulled pending raw events in batches and resolved a mapper based on the event’s <code>provider</code> and <code>eventType</code>. Each mapper translated the source payload into one or more canonical feed objects, which were then validated before being written into <code>FeedItem</code>.</p>
+<p>This was probably the most reusable part of the whole design.</p>
+<p>Without canonicalization, every new event source risks leaking its irrelevant attributes deeper into the system. The frontend ends up understanding too much and query logic starts spawning special cases. Adding a new source becomes more expensive than it should be. With canonicalization, the messy source-specific logic stays at the outskirts of the system.</p>
+<p>Internally, the system just needs to understand:</p>
+<ul><li>a feed item has a type</li><li>it has content</li><li>it has a source</li><li>it occurred at a certain time</li><li>it belongs to some scope</li><li>it has a stable identity</li></ul>
+<p>This is a much better foundation than letting the whole product depend on the raw shape of each incoming event.</p>
+<h2>3. Scope rules belong in the write path</h2>
+<p>Another thing that helped was enforcing audience rules early.</p>
+<p>In the processor, some feed types were considered global and some were organization-scoped. The processor explicitly checked that:</p>
+<ul><li>global feed types <strong>must not</strong> have an <code>orgId</code></li><li>organization-scoped feed types <strong>must</strong> have an <code>orgId</code></li></ul>
+<p>If those rules were violated, the event failed before it was stored as a feed item.</p>
+<p>If we leave scope implicit, it tends to get reimplemented inconsistently:</p>
+<ul><li>one query filters correctly</li><li>another forgets</li><li>one component assumes global</li><li>another assumes org-scoped</li><li>eventually the feed starts showing the right data to the wrong audience</li></ul>
+<p>It’s much cleaner to make those semantics part of the write path rather than relying on every read path to remember them.</p>
+<h2>4. We dedupe twice</h2>
+<p>There are really two (corresponding to the difference between raw ingest events and feed items) different duplication problems in a feed system:</p>
+<ol><li><strong>Did we receive this source event more than once?</strong></li><li><strong>Should the user see this feed item more than once?</strong></li></ol>
+<p>These are related, but aren’t the same question.</p>
+<p>So we handled duplication at two levels:</p>
+<ul><li><code>RawIngestEvent</code> had a dedupe key for the source event</li><li><code>FeedItem</code> had its own <code>idempotencyKey</code> for the canonical, user-facing item</li></ul>
+<p>The processor then used an upsert keyed on that feed-level idempotency key.</p>
+<p>That separation was helpful because:</p>
+<ul><li>one raw event can produce multiple feed items</li><li>multiple raw events can sometimes collapse into the same visible concept</li><li>transport-level retries should not necessarily create UI-level duplicates</li></ul>
+<p>It made the system more resilient without forcing those concerns to collapse into one crude “is this a duplicate?” check.</p>
+<h2>5. The read side stays simple</h2>
+<p>Because the ingest and normalization pipeline did the heavy lifting, the read API could stay fairly clean. The feed route did a few straightforward things:</p>
+<ul><li>checked the authenticated session</li><li>rejected unauthorized requests</li><li>verified organization membership when an org-specific feed was requested</li><li>parsed a cursor from <code>createdAt</code> and <code>id</code></li><li>fetched a page</li><li>serialized timestamps</li><li>returned a <code>nextCursor</code> if more results existed</li></ul>
+<p>By the time our API returns items, most of the important decisions had already been made.</p>
+<p>One small technical detail; the cursor used both:</p>
+<ul><li><code>createdAt</code></li><li><code>id</code></li></ul>
+<p>instead of relying on timestamp alone. This is because feeds often have multiple items with the same timestamp granularity, and timestamp-only pagination can get unstable. Using the timestamp plus a tie-breaker gives us a much cleaner continuation point.</p>
+<h2>6. The frontend is just a registry of UI</h2>
+<p>On the client side, the feed list component mostly just had to:</p>
+<ul><li>fetch pages from <code>/api/feed</code></li><li>append them locally</li><li>support infinite scrolling</li><li>provide a manual “Load more” fallback</li><li>render each item with the right card component</li></ul>
+<p>The list itself used an <code>IntersectionObserver</code> to auto-load when the sentinel entered view, but still kept an explicit button for fallback and accessibility; typical feed best practices.</p>
+<p>The rendering side used a registry that mapped feed item types to specific card components. This lets different item types have distinct presentations without turning the feed into one giant conditional renderer. More specialized cards could even be lazy-loaded when needed, while unknown types fall-back to a generic card. This registry pattern aged much better than a single feed card component full of branching logic would have.</p>
+<h1>The final pattern</h1>
+<p>If I had to boil the whole thing down, the reusable pattern is this:</p>
+<ol><li><strong>Capture events in raw form</strong></li><li><strong>Normalize them into a canonical contract</strong></li><li><strong>Enforce audience and scoping rules</strong></li><li><strong>Deduplicate at both the event and feed layers</strong></li><li><strong>Store a stable feed model</strong></li><li><strong>Keep the read API simple</strong></li><li><strong>Render by type, not by source</strong></li></ol>
+<p>This approach takes a little more discipline up front, but it buys us:</p>
+<ul><li>cleaner boundaries</li><li>easier debugging</li><li>safer retries</li><li>more predictable querying</li><li>more extensible rendering (adding new feed content is a cinch)</li><li>less coupling between producers and presentation</li></ul>
+<p>What helped a lot while building this was the time I spent many years ago studying design patterns on <a href="https://refactoring.guru/">Refactoring Guru’s website</a>. Some patterns I used just for this implementation (yes I asked codex to tell me what were used) include:</p>
+<ul><li>mapper lookup by type/provider → <strong>Strategy</strong></li><li>feed card registry by item type → <strong>Strategy</strong></li><li>canonical event creation → often <strong>Factory Method</strong> or <strong>Builder</strong></li><li>staged processing flow → loosely <strong>Template Method</strong></li><li>generic fallback wrappers around specialized renderers → sometimes <strong>Decorator</strong></li><li>feed composed of many item renderers → lightly <strong>Composite</strong></li><li>infinite feed traversal/pagination → <strong>Iterator</strong></li><li>event-driven UI updates / subscriptions, if present elsewhere → <strong>Observer</strong></li></ul>
+<p>Comend’s Feed looked like a timeline on the surface, but the more reusable pattern underneath was really about normalization: taking messy, heterogeneous activity and turning it into something consistent, scoped, and understandable. Although it was never the core feature we emphasized to users, it was still my favourite feature of all the things we built.</p>
+            </article>
+
+            <p class="blog-kicker">
+                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
+            </p>
+        </div>
+    </div>
+</div>
+<script src="/assets/js/blog.js"></script>
+</body>
+</html>
