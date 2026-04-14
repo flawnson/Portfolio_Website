@@ -1,5 +1,16 @@
 [
   {
+    "title": "The Comend Stack",
+    "slug": "the-comend-stack",
+    "date": "2026-01-25",
+    "excerpt": "My thoughts on the core stack we used at Comend.",
+    "tags": [
+      "startup",
+      "web-dev",
+      "product"
+    ]
+  },
+  {
     "title": "Quick guide on getting llama.cpp up and running on Windows",
     "slug": "llama-cpp-on-windows",
     "date": "2025-03-05",

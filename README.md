@@ -41,9 +41,17 @@ You can find it in the [Flitter](https://github.com/flawnson/flitter) repo on my
 
 # Blog
 This is a simple python-rendered markdown blog.
+
+When I create or edit a post, I run the following command to build the blog:
 ```python
 python scripts/build-blog.py
 ```
+Then deploy my site like normal.
+
+# Analytics
+I use onedollarstats to track page views.
 
 # Ideas
-[] A questbook for site visitors to leave a note or sticker
+[] A guestbook for site visitors to leave a note or sticker
+[] A searchable feed of Flitter
+[] Table of contents for blog posts
