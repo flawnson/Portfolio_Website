@@ -82,6 +82,20 @@ def apply_inline_formatting(text: str) -> str:
     return escaped
 
 
+def render_aside(lines: list[str]) -> str:
+    inner_lines: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("<aside") or stripped == "</aside>":
+            continue
+        inner_lines.append(line)
+
+    inner_markdown = "\n".join(inner_lines).strip()
+    inner_html = markdown_to_html(inner_markdown)
+    return f"<aside>\n{inner_html}\n</aside>"
+
+
 def markdown_to_html(markdown: str) -> str:
     lines = markdown.splitlines()
     blocks: list[str] = []
@@ -141,7 +155,7 @@ def markdown_to_html(markdown: str) -> str:
             in_aside_block = True
             aside_buffer = [line]
             if "</aside>" in stripped:
-                blocks.append("\n".join(aside_buffer))
+                blocks.append(render_aside(aside_buffer))
                 aside_buffer = []
                 in_aside_block = False
             continue
@@ -149,7 +163,7 @@ def markdown_to_html(markdown: str) -> str:
         if in_aside_block:
             aside_buffer.append(line)
             if "</aside>" in stripped:
-                blocks.append("\n".join(aside_buffer))
+                blocks.append(render_aside(aside_buffer))
                 aside_buffer = []
                 in_aside_block = False
             continue

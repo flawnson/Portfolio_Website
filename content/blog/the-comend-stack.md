@@ -1,9 +1,9 @@
 ---
 title: The Comend Stack
 slug: the-comend-stack
-date: 2026-01-25
+date: 2026-02-25
 excerpt: My thoughts on the core stack we used at Comend.
-tags: [startup, web-dev, product]
+tags: [comend, startup, web-dev, product]
 published: true
 ---
 <aside>

@@ -65,7 +65,7 @@ The Virgin unsafe version:
 
 ```bash
 @echo off
-cd /d "C:\path\to\llama-b8487-bin-win-cuda-13.1-x64"
+cd /d "C:\path\to\llama-cpp"
 start "" /min cmd /c ".\llama-server.exe --models-dir ""C:\path\to\models"" --host 127.0.0.1 --port 8080 -c 8192 --n-gpu-layers 99 --models-max 1"
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080/"
@@ -77,7 +77,7 @@ The Chad safe version:
 @echo off
 setlocal
 
-set "LLAMA_DIR=C:\path\to\llama-b8487-bin-win-cuda-13.1-x64"
+set "LLAMA_DIR=C:\path\to\llama-cpp"
 set "MODELS_DIR=C:\path\to\models"
 set "PORT=57575"
 

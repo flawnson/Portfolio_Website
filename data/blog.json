@@ -1,12 +1,48 @@
 [
   {
+    "title": "AI coding agents suck at security",
+    "slug": "ai-coding-agents-suck-at-security",
+    "date": "2026-04-2",
+    "excerpt": "Most developers extols AI agents. But they are notoriously bad at security.",
+    "tags": [
+      "ai",
+      "agents",
+      "engineering",
+      "security",
+      "development"
+    ]
+  },
+  {
     "title": "The Comend Stack",
     "slug": "the-comend-stack",
-    "date": "2026-01-25",
+    "date": "2026-02-25",
     "excerpt": "My thoughts on the core stack we used at Comend.",
     "tags": [
+      "comend",
       "startup",
       "web-dev",
+      "product"
+    ]
+  },
+  {
+    "title": "Building for high-trust users",
+    "slug": "building-for-high-trust-users",
+    "date": "2026-01-13",
+    "excerpt": "Most of the time we spent at Comend was building trust, not products.",
+    "tags": [
+      "comend",
+      "product",
+      "users"
+    ]
+  },
+  {
+    "title": "Building the Comend Feed - my favorite feature",
+    "slug": "building-my-favorite-comend-feature",
+    "date": "2025-07-24",
+    "excerpt": "I had the most fun building the Feed feature on Comend.",
+    "tags": [
+      "comend",
+      "engineering",
       "product"
     ]
   },
@@ -27,6 +63,7 @@
     "date": "2024-09-13",
     "excerpt": "As a 2 person team that grew to 5 at our peak we had a lot of fun hiring.",
     "tags": [
+      "comend",
       "hiring",
       "relationships",
       "startup"

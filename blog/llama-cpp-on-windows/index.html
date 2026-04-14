@@ -57,7 +57,7 @@
 <p>Vim into the file and paste:</p>
 <p>The Virgin unsafe version:</p>
 <pre><code>@echo off
-cd /d &quot;C:\path\to\llama-b8487-bin-win-cuda-13.1-x64&quot;
+cd /d &quot;C:\path\to\llama-cpp&quot;
 start &quot;&quot; /min cmd /c &quot;.\llama-server.exe --models-dir &quot;&quot;C:\path\to\models&quot;&quot; --host 127.0.0.1 --port 8080 -c 8192 --n-gpu-layers 99 --models-max 1&quot;
 timeout /t 2 /nobreak &gt;nul
 start &quot;&quot; &quot;http://127.0.0.1:8080/&quot;</code></pre>
@@ -65,7 +65,7 @@ start &quot;&quot; &quot;http://127.0.0.1:8080/&quot;</code></pre>
 <pre><code>@echo off
 setlocal
 
-set &quot;LLAMA_DIR=C:\path\to\llama-b8487-bin-win-cuda-13.1-x64&quot;
+set &quot;LLAMA_DIR=C:\path\to\llama-cpp&quot;
 set &quot;MODELS_DIR=C:\path\to\models&quot;
 set &quot;PORT=57575&quot;
 

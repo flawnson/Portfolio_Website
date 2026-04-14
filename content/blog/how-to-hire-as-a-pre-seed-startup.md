@@ -3,7 +3,7 @@ title: How we hired at Comend
 slug: how-to-hire-as-a-pre-seed-startup
 date: 2024-09-13
 excerpt: As a 2 person team that grew to 5 at our peak we had a lot of fun hiring.
-tags: [hiring, relationships, startup]
+tags: [comend, hiring, relationships, startup]
 published: true
 ---
 
