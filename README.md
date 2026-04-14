@@ -39,5 +39,11 @@ All endpoints are in the micro-posts.php file.
 I wrote a small iOS app with SwiftUI to post to my website from anywhere.
 You can find it in the [Flitter](https://github.com/flawnson/flitter) repo on my GitHub.
 
+# Blog
+This is a simple python-rendered markdown blog.
+```python
+python scripts/build-blog.py
+```
+
 # Ideas
 [] A questbook for site visitors to leave a note or sticker

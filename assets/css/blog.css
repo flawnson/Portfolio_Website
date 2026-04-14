@@ -1,0 +1,264 @@
+.blog-shell {
+    padding-top: 30px;
+    padding-bottom: 60px;
+}
+
+.blog-kicker {
+    margin-bottom: 16px;
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+}
+
+.blog-kicker a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.blog-kicker a:hover {
+    text-decoration: none;
+    border-bottom-color: rgba(0, 0, 0, 0.7);
+}
+
+.blog-header,
+.blog-list-header {
+    margin-bottom: 36px;
+}
+
+.blog-title,
+.blog-list-title {
+    margin: 0 0 10px;
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.blog-title {
+    font-size: 4.2rem;
+}
+
+.blog-list-title {
+    font-size: 4rem;
+}
+
+.blog-excerpt,
+.blog-list-subtitle {
+    font-size: 1.8rem;
+    line-height: 1.7;
+    opacity: 0.82;
+    max-width: 760px;
+}
+
+.blog-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: 1.35rem;
+    opacity: 0.74;
+}
+
+.blog-tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.blog-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.blog-article {
+    font-size: 1.8rem;
+    line-height: 1.8;
+}
+
+.blog-article > *:first-child {
+    margin-top: 0;
+}
+
+.blog-article h1,
+.blog-article h2,
+.blog-article h3,
+.blog-article h4 {
+    line-height: 1.25;
+    margin-top: 42px;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+
+.blog-article h1 { font-size: 3.6rem; }
+.blog-article h2 { font-size: 3rem; }
+.blog-article h3 { font-size: 2.35rem; }
+.blog-article h4 { font-size: 2rem; }
+
+.blog-article p,
+.blog-article ul,
+.blog-article ol,
+.blog-article blockquote,
+.blog-article pre,
+.blog-article table {
+    margin-bottom: 22px;
+}
+
+.blog-article ul,
+.blog-article ol {
+    padding-left: 24px;
+}
+
+.blog-article li {
+    margin-bottom: 8px;
+}
+
+.blog-article a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.blog-article img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 28px auto;
+}
+
+.blog-article code {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.9em;
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.blog-article pre {
+    overflow-x: auto;
+    padding: 18px;
+    background: #f4f4f4;
+    border: 1px solid #e7e7e7;
+    border-radius: 8px;
+}
+
+.blog-article pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.blog-article blockquote {
+    margin-left: 0;
+    padding: 10px 0 10px 18px;
+    border-left: 3px solid rgba(0, 0, 0, 0.25);
+    opacity: 0.88;
+}
+
+.blog-footer-nav {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.blog-footer-nav a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.blog-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    padding: 22px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.blog-card:hover,
+.blog-card:focus {
+    text-decoration: none;
+}
+
+.blog-card:last-child {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.blog-card-title {
+    margin: 0 0 8px;
+    font-size: 2.6rem;
+    line-height: 1.2;
+}
+
+.blog-card-meta {
+    margin-bottom: 10px;
+    font-size: 1.3rem;
+    opacity: 0.7;
+}
+
+.blog-card-excerpt {
+    margin: 0;
+    font-size: 1.7rem;
+    line-height: 1.7;
+    opacity: 0.86;
+}
+
+body.dark-mode .blog-kicker a,
+body.dark-mode .blog-footer-nav a,
+body.dark-mode .blog-article a {
+    border-bottom-color: rgba(255, 255, 255, 0.35);
+}
+
+body.dark-mode .blog-tag,
+body.dark-mode .blog-article code,
+body.dark-mode .blog-article pre {
+    background: #151515;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .blog-card,
+body.dark-mode .blog-footer-nav,
+body.dark-mode .blog-card:last-child,
+body.dark-mode .blog-article blockquote {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 767px) {
+    .blog-shell {
+        padding-top: 16px;
+        padding-bottom: 40px;
+    }
+
+    .blog-title,
+    .blog-list-title {
+        font-size: 3rem;
+    }
+
+    .blog-article {
+        font-size: 1.65rem;
+        line-height: 1.75;
+    }
+
+    .blog-article h1 { font-size: 2.8rem; }
+    .blog-article h2 { font-size: 2.4rem; }
+    .blog-article h3 { font-size: 2rem; }
+}
+
+.blog-article aside {
+    margin: 24px 0;
+    padding: 16px 18px;
+    border-left: 4px solid #222;
+    background: #f6f6f6;
+    border-radius: 8px;
+}
+
+.blog-article aside p {
+    margin: 0;
+}
+
+.blog-article aside strong {
+    font-weight: 700;
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick guide on getting llama.cpp up and running on Windows | Flawnson</title>
+    <meta name="description" content="A practical guide to running llama.cpp on Windows with downloadable binaries and GGUF models.">
+    <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
+    <link rel="stylesheet" href="/assets/css/bootstrap.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/blog.css">
+</head>
+<body>
+<div class="container blog-shell">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+
+            <header class="blog-header">
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
+                </p>
+                <div class="blog-meta">
+                    <time datetime="2025-03-05">March 05, 2025</time>
+                </div>
+                <h1 class="blog-title">
+                    Quick guide on getting llama.cpp up and running on Windows
+                </h1>
+                <div class="blog-meta">
+                    <span class="blog-tags"><span class="blog-tag">llm</span><span class="blog-tag">windows</span><span class="blog-tag">llama.cpp</span></span>
+                </div>
+                <p class="blog-excerpt">A practical guide to running llama.cpp on Windows with downloadable binaries and GGUF models.</p>
+            </header>
+
+            <article class="blog-article">
+                <p>Quick guide on getting llama cpp up and running on Windows. I’m using downloadable binaries and not the llama cpp cli.</p>
+<h1>Download binaries</h1>
+<p>Go to the Llama cpp github repository and navigate to the <a href="https://github.com/ggml-org/llama.cpp/releases">latest release</a>. There should be a list of downloadable tar.gz files to download and unpack. For an RTX 5090 setup, use:</p>
+<ul><li>Windows x64 (CUDA 13) - CUDA 13.1 DLLs</li></ul>
+<p>Download both files, unpack them, and move all the files in the DLL dir to the main dir.</p>
+<h1>Download a GGUF</h1>
+<p>You can download with <code>curl</code> or browse hugging face for models that have downloadable <code>.gguf</code> files (there’s a filter on their search page).</p>
+<p>Download the <code>.gguf</code> file, ideally inside a dedicated <code>models</code> directory (plan to store all your model <code>.gguf</code> files here). Take note of the path to the directory.</p>
+<h1>Do a test run</h1>
+<p>Navigate to the main llama cpp file. Do this from the folder where <code>llama-server.exe</code> lives.</p>
+<p>If all you want is “open the chat UI on localhost and use one of my GGUF files,” the simplest command is:</p>
+<pre><code>.\llama-server.exe -m &quot;D:\models\your-model.gguf&quot; -c 8192 --host 127.0.0.1 --port 8080 --n-gpu-layers 99</code></pre>
+<p>On Windows, the official quick start uses exactly this pattern: <code>llama-server.exe -m ...</code>, and by default it listens on <code>127.0.0.1:8080</code> with the web front end at that same URL.</p>
+<p>Then open:</p>
+<pre><code>http://127.0.0.1:8080/</code></pre>
+<h1>Reopen in router mode</h1>
+<p><code>llama-server</code> also supports <strong>router mode</strong> if you start it <strong>without</strong> <code>-m</code>. In that mode it exposes model load/unload APIs.</p>
+<p>The command is:</p>
+<pre><code>.\llama-server.exe --models-dir &quot;C:\Users\Flawnson\models&quot; --host 127.0.0.1 --port 8080 -c 8192 --n-gpu-layers 99 --models-max 1</code></pre>
+<h1>Create a shortcut</h1>
+<p>It would be a lot easier to not have to run these commands every time you want to start using a local model. On Windows, you can create a shortcut by:</p>
+<pre><code>touch start-llama-router.bat</code></pre>
+<p>Vim into the file and paste:</p>
+<p>The Virgin unsafe version:</p>
+<pre><code>@echo off
+cd /d &quot;C:\path\to\llama-b8487-bin-win-cuda-13.1-x64&quot;
+start &quot;&quot; /min cmd /c &quot;.\llama-server.exe --models-dir &quot;&quot;C:\path\to\models&quot;&quot; --host 127.0.0.1 --port 8080 -c 8192 --n-gpu-layers 99 --models-max 1&quot;
+timeout /t 2 /nobreak &gt;nul
+start &quot;&quot; &quot;http://127.0.0.1:8080/&quot;</code></pre>
+<p>The Chad safe version:</p>
+<pre><code>@echo off
+setlocal
+
+set &quot;LLAMA_DIR=C:\path\to\llama-b8487-bin-win-cuda-13.1-x64&quot;
+set &quot;MODELS_DIR=C:\path\to\models&quot;
+set &quot;PORT=57575&quot;
+
+set &quot;PID=&quot;
+set &quot;PROC=&quot;
+
+for /f &quot;tokens=5&quot; %%a in (&#x27;netstat -ano ^| findstr /R /C:&quot;:%PORT% .*LISTENING&quot;&#x27;) do (
+    set &quot;PID=%%a&quot;
+    goto :found_port
+)
+
+:free_port
+cd /d &quot;%LLAMA_DIR%&quot;
+start &quot;&quot; /min cmd /c &quot;.\llama-server.exe --models-dir &quot;&quot;%MODELS_DIR%&quot;&quot; --host 127.0.0.1 --port %PORT% -c 8192 --n-gpu-layers 99 --models-max 1&quot;
+timeout /t 2 /nobreak &gt;nul
+start &quot;&quot; &quot;http://127.0.0.1:%PORT%/&quot;
+exit /b 0
+
+:found_port
+for /f &quot;skip=3 tokens=1&quot; %%a in (&#x27;tasklist /FI &quot;PID eq %PID%&quot;&#x27;) do (
+    set &quot;PROC=%%a&quot;
+    goto :check_proc
+)
+
+:check_proc
+if /I &quot;%PROC%&quot;==&quot;llama-server.exe&quot; (
+    echo llama-server is already running on port %PORT%. Reusing it.
+    start &quot;&quot; &quot;http://127.0.0.1:%PORT%/&quot;
+    exit /b 0
+) else (
+    echo Port %PORT% is already in use by %PROC% ^(PID %PID%^). Not starting llama-server.
+    exit /b 1
+)</code></pre>
+<p>Once the <code>.bat</code> file has been created, you can create a shortcut by:</p>
+<ul><li>right-clicking <code>start-llama-router.bat</code></li><li>click <strong>Show more options</strong> if needed</li><li>click <strong>Create shortcut</strong></li><li>drag that shortcut to your desktop, or copy/paste it there</li></ul>
+<p>You can rename the shortcut if you’d like.</p>
+<p>If you want it to look good, you can add an icon by downloading the llama cpp logo, turning it into a <code>.ico</code>, and selecting it in the shortcut icon selection window.</p>
+<p>You can do that by: Right-click the shortcut → <strong>Properties</strong> → <strong>Shortcut</strong> tab → <strong>Change Icon</strong>.</p>
+<p>Windows can be annoying about pinning <code>.bat</code> files directly, so pin the <strong>shortcut</strong>, not the <code>.bat</code>.</p>
+<ul><li>right-click the desktop shortcut</li><li>click <strong>Pin to taskbar</strong></li></ul>
+<p>If that option does not show up, do this instead:</p>
+<ul><li>right-click the shortcut</li><li>open <strong>Properties</strong></li><li>in <strong>Target</strong>, change it from the batch file path to:</li></ul>
+<pre><code>C:\Windows\System32\cmd.exe /c &quot;C:\Users\Flawnson\start-llama-router.bat&quot;</code></pre>
+<p>That’s it. You should able to use it like any other application on your computer now.</p>
+            </article>
+
+            <p class="blog-kicker">
+                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
+            </p>
+        </div>
+    </div>
+</div>
+<script src="/assets/js/blog.js"></script>
+</body>
+</html>
