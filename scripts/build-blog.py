@@ -366,6 +366,7 @@ def build_index(posts: list[Post]) -> None:
         )
 
     html_output = INDEX_TEMPLATE.replace("{{posts}}", "\n".join(cards))
+    html_output = html_output.replace("{{post_count}}", str(len(posts)))
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUTPUT_DIR / "index.html").write_text(html_output, encoding="utf-8")
 
