@@ -19,6 +19,8 @@ The things that helped: **at least 1 valuable lead**
 
 The things that worked: **we actually hired them**
 
+{{toc}}
+
 # ❌ The things that didn’t help
 
 ## LinkedIn job posts, search, and conversation

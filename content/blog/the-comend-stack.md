@@ -20,6 +20,8 @@ I’ve organized this article by decision layer common for engineering teams. We
 
 🔴 Would not use again
 
+{{toc}}
+
 # Frontend
 
 ## Tailwind 🟢

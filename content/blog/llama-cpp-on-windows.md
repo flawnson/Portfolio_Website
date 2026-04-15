@@ -9,6 +9,8 @@ published: true
 
 Quick guide on getting llama cpp up and running on Windows. I’m using downloadable binaries and not the llama cpp cli.
 
+{{toc}}
+
 # Download binaries
 
 Go to the Llama cpp github repository and navigate to the [latest release](https://github.com/ggml-org/llama.cpp/releases). There should be a list of downloadable tar.gz files to download and unpack. For an RTX 5090 setup, use:

@@ -35,25 +35,34 @@
 
                 <article class="blog-article">
                     <p>Quick guide on getting llama cpp up and running on Windows. I’m using downloadable binaries and not the llama cpp cli.</p>
-<h1>Download binaries</h1>
+<nav class="blog-toc" aria-label="Table of contents">
+  <ol class="blog-toc-list">
+<li class="blog-toc-item blog-toc-level-1"><a href="#download-binaries">Download binaries</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#download-a-gguf">Download a GGUF</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#do-a-test-run">Do a test run</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#reopen-in-router-mode">Reopen in router mode</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#create-a-shortcut">Create a shortcut</a></li>
+  </ol>
+</nav>
+<h1 id="download-binaries">Download binaries</h1>
 <p>Go to the Llama cpp github repository and navigate to the <a href="https://github.com/ggml-org/llama.cpp/releases">latest release</a>. There should be a list of downloadable tar.gz files to download and unpack. For an RTX 5090 setup, use:</p>
 <ul><li>Windows x64 (CUDA 13) - CUDA 13.1 DLLs</li></ul>
 <p>Download both files, unpack them, and move all the files in the DLL dir to the main dir.</p>
-<h1>Download a GGUF</h1>
+<h1 id="download-a-gguf">Download a GGUF</h1>
 <p>You can download with <code>curl</code> or browse hugging face for models that have downloadable <code>.gguf</code> files (there’s a filter on their search page).</p>
 <p>Download the <code>.gguf</code> file, ideally inside a dedicated <code>models</code> directory (plan to store all your model <code>.gguf</code> files here). Take note of the path to the directory.</p>
-<h1>Do a test run</h1>
+<h1 id="do-a-test-run">Do a test run</h1>
 <p>Navigate to the main llama cpp file. Do this from the folder where <code>llama-server.exe</code> lives.</p>
 <p>If all you want is “open the chat UI on localhost and use one of my GGUF files,” the simplest command is:</p>
 <pre><code>.\llama-server.exe -m &quot;D:\models\your-model.gguf&quot; -c 8192 --host 127.0.0.1 --port 8080 --n-gpu-layers 99</code></pre>
 <p>On Windows, the official quick start uses exactly this pattern: <code>llama-server.exe -m ...</code>, and by default it listens on <code>127.0.0.1:8080</code> with the web front end at that same URL.</p>
 <p>Then open:</p>
 <pre><code>http://127.0.0.1:8080/</code></pre>
-<h1>Reopen in router mode</h1>
+<h1 id="reopen-in-router-mode">Reopen in router mode</h1>
 <p><code>llama-server</code> also supports <strong>router mode</strong> if you start it <strong>without</strong> <code>-m</code>. In that mode it exposes model load/unload APIs.</p>
 <p>The command is:</p>
 <pre><code>.\llama-server.exe --models-dir &quot;C:\Users\Flawnson\models&quot; --host 127.0.0.1 --port 8080 -c 8192 --n-gpu-layers 99 --models-max 1</code></pre>
-<h1>Create a shortcut</h1>
+<h1 id="create-a-shortcut">Create a shortcut</h1>
 <p>It would be a lot easier to not have to run these commands every time you want to start using a local model. On Windows, you can create a shortcut by:</p>
 <pre><code>touch start-llama-router.bat</code></pre>
 <p>Vim into the file and paste:</p>

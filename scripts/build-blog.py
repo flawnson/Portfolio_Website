@@ -29,6 +29,8 @@ INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+TOC_HEADING_RE = re.compile(r"<h([1-3])>(.*?)</h\1>")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 @dataclass
@@ -227,6 +229,52 @@ def markdown_to_html(markdown: str) -> str:
 
     return "\n".join(blocks)
 
+
+def slugify_heading(text: str) -> str:
+    slug = html.unescape(text).lower()
+    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
+    slug = re.sub(r"\s+", "-", slug).strip("-")
+    slug = re.sub(r"-{2,}", "-", slug)
+    return slug or "section"
+
+
+def inject_heading_ids_and_collect(content_html: str) -> tuple[str, list[tuple[int, str, str]]]:
+    headings: list[tuple[int, str, str]] = []
+    slug_counts: dict[str, int] = {}
+
+    def replacer(match: re.Match[str]) -> str:
+        level = int(match.group(1))
+        heading_html = match.group(2)
+        heading_text = html.unescape(HTML_TAG_RE.sub("", heading_html)).strip()
+
+        base_slug = slugify_heading(heading_text)
+        slug_counts[base_slug] = slug_counts.get(base_slug, 0) + 1
+        heading_id = base_slug if slug_counts[base_slug] == 1 else f"{base_slug}-{slug_counts[base_slug]}"
+
+        headings.append((level, heading_text, heading_id))
+        return f'<h{level} id="{heading_id}">{heading_html}</h{level}>'
+
+    updated_html = TOC_HEADING_RE.sub(replacer, content_html)
+    return updated_html, headings
+
+
+def render_toc(headings: list[tuple[int, str, str]]) -> str:
+    if not headings:
+        return ""
+
+    items = []
+    for level, title, heading_id in headings:
+        items.append(
+            f'<li class="blog-toc-item blog-toc-level-{level}"><a href="#{html.escape(heading_id)}">{html.escape(title)}</a></li>'
+        )
+
+    items_html = "\n".join(items)
+    return (
+        '<nav class="blog-toc" aria-label="Table of contents">\n'
+        f'  <ol class="blog-toc-list">\n{items_html}\n  </ol>\n'
+        "</nav>"
+    )
+
 def load_posts() -> list[Post]:
     posts: list[Post] = []
 
@@ -266,6 +314,11 @@ def build_post(post: Post) -> None:
     if post.tags:
         rendered_tags = "".join(f'<span class="blog-tag">{html.escape(tag)}</span>' for tag in post.tags)
         tags_html = f'<span class="blog-tags">{rendered_tags}</span>'
+
+    content_html, headings = inject_heading_ids_and_collect(post.body_html)
+    toc_html = render_toc(headings)
+    content_html = content_html.replace("<p>{{toc}}</p>", toc_html)
+    content_html = content_html.replace("{{toc}}", toc_html)
 
     structured_data = {
         "@context": "https://schema.org",
@@ -338,7 +391,7 @@ def build_post(post: Post) -> None:
         "{{date_iso}}": post.date,
         "{{date_display}}": post.date_display,
         "{{tags_html}}": tags_html,
-        "{{content}}": post.body_html,
+        "{{content}}": content_html,
         "{{root_path}}": "../",
         "{{canonical_url}}": post_url,
         "{{structured_data_json}}": json.dumps(structured_data, ensure_ascii=False),

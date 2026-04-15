@@ -33,6 +33,8 @@ In our case, activity came from a mix of places:
 
 Some of that third party activity was not pushed to us in real time. Instead, we used a daily cron job (Vercel makes this easy) to poll and ingest new items from outside sources, then run them through the same normalization pipeline as everything else. Once we have that mix, a feed stops being “a list of recent things” and starts becoming a normalization problem.
 
+{{toc}}
+
 # The pattern that ended up working
 
 The useful pattern was to split the system into layers instead of letting every feature write directly into a user-facing timeline.

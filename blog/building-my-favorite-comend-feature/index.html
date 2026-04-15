@@ -43,12 +43,24 @@
 <p>In our case, activity came from a mix of places:</p>
 <ul><li>user actions inside the product</li><li>internal system events</li><li>ingest jobs</li><li>outside sources (third party APIs, RSS feeds, etc.)</li><li>events that belonged to a specific organization</li><li>events that were broader than any one organization</li></ul>
 <p>Some of that third party activity was not pushed to us in real time. Instead, we used a daily cron job (Vercel makes this easy) to poll and ingest new items from outside sources, then run them through the same normalization pipeline as everything else. Once we have that mix, a feed stops being “a list of recent things” and starts becoming a normalization problem.</p>
-<h1>The pattern that ended up working</h1>
+<nav class="blog-toc" aria-label="Table of contents">
+  <ol class="blog-toc-list">
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-pattern-that-ended-up-working">The pattern that ended up working</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#1-capture-raw-activity">1. Capture raw activity</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#2-canonicalization-is-how-the-system-becomes-reusable">2. Canonicalization is how the system becomes reusable</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#3-scope-rules-belong-in-the-write-path">3. Scope rules belong in the write path</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#4-we-dedupe-twice">4. We dedupe twice</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#5-the-read-side-stays-simple">5. The read side stays simple</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#6-the-frontend-is-just-a-registry-of-ui">6. The frontend is just a registry of UI</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-final-pattern">The final pattern</a></li>
+  </ol>
+</nav>
+<h1 id="the-pattern-that-ended-up-working">The pattern that ended up working</h1>
 <p>The useful pattern was to split the system into layers instead of letting every feature write directly into a user-facing timeline.</p>
 <p>At a high level, it looked like this:</p>
 <ol><li><strong>Capture raw activity</strong></li><li><strong>Translate it into a canonical feed shape</strong></li><li><strong>Enforce scope and idempotency</strong></li><li><strong>Store the final feed item</strong></li><li><strong>Query it through a simple paginated API</strong></li><li><strong>Render by item type on the frontend</strong></li></ol>
 <p>That separation gave us a lot more flexibility than treating the feed as just another table in the app.</p>
-<h2>1. Capture raw activity</h2>
+<h2 id="1-capture-raw-activity">1. Capture raw activity</h2>
 <p>One of the best decisions was not writing directly into the feed table.</p>
 <p>Instead, raw events were first written into a <code>RawIngestEvent</code> model with fields like:</p>
 <ul><li><code>provider</code></li><li><code>eventType</code></li><li><code>externalId</code></li><li><code>occurredAt</code></li><li><code>payload</code></li><li><code>receivedAt</code></li><li><code>dedupeKey</code></li><li><code>status</code></li><li><code>error</code></li></ul>
@@ -63,14 +75,14 @@
 <blockquote><p>this is how we want to present that event to a user</p></blockquote>
 <p>&gt;</p>
 <p>Those aren’t the same thing, and treating them as separate concepts made the system much easier to extend. This separation also acts as a safety buffer between what we collect and what we show, and opens up the possibility for tracking activity that we want for ourselves but not for the feed.</p>
-<h2>2. Canonicalization is how the system becomes reusable</h2>
+<h2 id="2-canonicalization-is-how-the-system-becomes-reusable">2. Canonicalization is how the system becomes reusable</h2>
 <p>The next step was a processor that pulled pending raw events in batches and resolved a mapper based on the event’s <code>provider</code> and <code>eventType</code>. Each mapper translated the source payload into one or more canonical feed objects, which were then validated before being written into <code>FeedItem</code>.</p>
 <p>This was probably the most reusable part of the whole design.</p>
 <p>Without canonicalization, every new event source risks leaking its irrelevant attributes deeper into the system. The frontend ends up understanding too much and query logic starts spawning special cases. Adding a new source becomes more expensive than it should be. With canonicalization, the messy source-specific logic stays at the outskirts of the system.</p>
 <p>Internally, the system just needs to understand:</p>
 <ul><li>a feed item has a type</li><li>it has content</li><li>it has a source</li><li>it occurred at a certain time</li><li>it belongs to some scope</li><li>it has a stable identity</li></ul>
 <p>This is a much better foundation than letting the whole product depend on the raw shape of each incoming event.</p>
-<h2>3. Scope rules belong in the write path</h2>
+<h2 id="3-scope-rules-belong-in-the-write-path">3. Scope rules belong in the write path</h2>
 <p>Another thing that helped was enforcing audience rules early.</p>
 <p>In the processor, some feed types were considered global and some were organization-scoped. The processor explicitly checked that:</p>
 <ul><li>global feed types <strong>must not</strong> have an <code>orgId</code></li><li>organization-scoped feed types <strong>must</strong> have an <code>orgId</code></li></ul>
@@ -78,7 +90,7 @@
 <p>If we leave scope implicit, it tends to get reimplemented inconsistently:</p>
 <ul><li>one query filters correctly</li><li>another forgets</li><li>one component assumes global</li><li>another assumes org-scoped</li><li>eventually the feed starts showing the right data to the wrong audience</li></ul>
 <p>It’s much cleaner to make those semantics part of the write path rather than relying on every read path to remember them.</p>
-<h2>4. We dedupe twice</h2>
+<h2 id="4-we-dedupe-twice">4. We dedupe twice</h2>
 <p>There are really two (corresponding to the difference between raw ingest events and feed items) different duplication problems in a feed system:</p>
 <ol><li><strong>Did we receive this source event more than once?</strong></li><li><strong>Should the user see this feed item more than once?</strong></li></ol>
 <p>These are related, but aren’t the same question.</p>
@@ -88,19 +100,19 @@
 <p>That separation was helpful because:</p>
 <ul><li>one raw event can produce multiple feed items</li><li>multiple raw events can sometimes collapse into the same visible concept</li><li>transport-level retries should not necessarily create UI-level duplicates</li></ul>
 <p>It made the system more resilient without forcing those concerns to collapse into one crude “is this a duplicate?” check.</p>
-<h2>5. The read side stays simple</h2>
+<h2 id="5-the-read-side-stays-simple">5. The read side stays simple</h2>
 <p>Because the ingest and normalization pipeline did the heavy lifting, the read API could stay fairly clean. The feed route did a few straightforward things:</p>
 <ul><li>checked the authenticated session</li><li>rejected unauthorized requests</li><li>verified organization membership when an org-specific feed was requested</li><li>parsed a cursor from <code>createdAt</code> and <code>id</code></li><li>fetched a page</li><li>serialized timestamps</li><li>returned a <code>nextCursor</code> if more results existed</li></ul>
 <p>By the time our API returns items, most of the important decisions had already been made.</p>
 <p>One small technical detail; the cursor used both:</p>
 <ul><li><code>createdAt</code></li><li><code>id</code></li></ul>
 <p>instead of relying on timestamp alone. This is because feeds often have multiple items with the same timestamp granularity, and timestamp-only pagination can get unstable. Using the timestamp plus a tie-breaker gives us a much cleaner continuation point.</p>
-<h2>6. The frontend is just a registry of UI</h2>
+<h2 id="6-the-frontend-is-just-a-registry-of-ui">6. The frontend is just a registry of UI</h2>
 <p>On the client side, the feed list component mostly just had to:</p>
 <ul><li>fetch pages from <code>/api/feed</code></li><li>append them locally</li><li>support infinite scrolling</li><li>provide a manual “Load more” fallback</li><li>render each item with the right card component</li></ul>
 <p>The list itself used an <code>IntersectionObserver</code> to auto-load when the sentinel entered view, but still kept an explicit button for fallback and accessibility; typical feed best practices.</p>
 <p>The rendering side used a registry that mapped feed item types to specific card components. This lets different item types have distinct presentations without turning the feed into one giant conditional renderer. More specialized cards could even be lazy-loaded when needed, while unknown types fall-back to a generic card. This registry pattern aged much better than a single feed card component full of branching logic would have.</p>
-<h1>The final pattern</h1>
+<h1 id="the-final-pattern">The final pattern</h1>
 <p>If I had to boil the whole thing down, the reusable pattern is this:</p>
 <ol><li><strong>Capture events in raw form</strong></li><li><strong>Normalize them into a canonical contract</strong></li><li><strong>Enforce audience and scoping rules</strong></li><li><strong>Deduplicate at both the event and feed layers</strong></li><li><strong>Store a stable feed model</strong></li><li><strong>Keep the read API simple</strong></li><li><strong>Render by type, not by source</strong></li></ol>
 <p>This approach takes a little more discipline up front, but it buys us:</p>

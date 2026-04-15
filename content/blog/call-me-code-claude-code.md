@@ -21,6 +21,8 @@ But developers have been ringing alarm bells well before that, even around much 
 
 This is not security. It’s worth unpacking this.
 
+{{toc}}
+
 # My name is Joe
 
 Whenever I’m asked for my name at Starbucks, Shake Shack, or any other name-asking establishment, I always give my dad’s name Joe (short for Joseph). My name is Flawnson. Before I was born, my dad made it up by taking the words:

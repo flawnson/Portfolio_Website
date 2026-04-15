@@ -19,7 +19,7 @@ There's a mix of content types throughout the document. You'll find one-pagers, 
 > 'Amateur.' you say that as if it was a dirty word or something, but 'amateur' comes from the Latin word 'amare' which means love... To do something for the love of it. - Mozart in the Jungle
 >
 
-This article is broken down into 3 sections:
+{{toc}}
 
 # **I knew nothing:**
 

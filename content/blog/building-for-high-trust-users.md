@@ -19,6 +19,8 @@ We knew this going in, but didn’t fully understand it. Comend is a research pl
 
 But the surface area of the product is only part of the story. The harder part was understanding who we were serving and what they had learned to distrust.
 
+{{toc}}
+
 ## Skepticism is competence
 
 Early on, while we were still ideating on our second product, we spoke to Chris Velona. He founded Project Sebastian after his son Sebastian was diagnosed with CLN8 Batten disease, and he has spent years pushing for research in a space where families often have to create momentum themselves. The cruelty of their story is that even when a potential CLN8 program existed, its pharma backer later stepped away, leaving families once again with no approved treatment and no obvious path forward. I know at least a half dozen similar stories.
