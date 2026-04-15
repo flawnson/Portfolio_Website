@@ -11,33 +11,34 @@
     <link rel="stylesheet" href="/assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>{{title}}</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="{{date_iso}}">{{date_display}}</time>
+                    </div>
+                    <h1 class="blog-title">
+                        {{title}}
+                    </h1>
+                    <div class="blog-meta">
+                        {{tags_html}}
+                    </div>
+                    <p class="blog-excerpt">{{excerpt}}</p>
+                </header>
 
-            <header class="blog-header">
+                <article class="blog-article">
+                    {{content}}
+                </article>
+
                 <p class="blog-kicker">
                     <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>{{title}}</span>
                 </p>
-                <div class="blog-meta">
-                    <time datetime="{{date_iso}}">{{date_display}}</time>
-                </div>
-                <h1 class="blog-title">
-                    {{title}}
-                </h1>
-                <div class="blog-meta">
-                    {{tags_html}}
-                </div>
-                <p class="blog-excerpt">{{excerpt}}</p>
-            </header>
-
-            <article class="blog-article">
-                {{content}}
-            </article>
-
-            <p class="blog-kicker">
-                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>{{title}}</span>
-            </p>
+            </div>
         </div>
     </div>
 </div>

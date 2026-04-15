@@ -4,35 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI coding agents suck at security | Flawnson</title>
-    <meta name="description" content="Most developers extols AI agents. But they are notoriously bad at security.">
+    <meta name="description" content="Most developers extol AI agents. But they are notoriously bad at security.">
     <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
     <link rel="stylesheet" href="/assets/css/bootstrap.css">
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="/assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>AI coding agents suck at security</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="2026-04-2">April 02, 2026</time>
+                    </div>
+                    <h1 class="blog-title">
+                        AI coding agents suck at security
+                    </h1>
+                    <div class="blog-meta">
+                        <span class="blog-tags"><span class="blog-tag">ai</span><span class="blog-tag">agents</span><span class="blog-tag">engineering</span><span class="blog-tag">security</span><span class="blog-tag">development</span></span>
+                    </div>
+                    <p class="blog-excerpt">Most developers extol AI agents. But they are notoriously bad at security.</p>
+                </header>
 
-            <header class="blog-header">
-                <p class="blog-kicker">
-                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>AI coding agents suck at security</span>
-                </p>
-                <div class="blog-meta">
-                    <time datetime="2026-04-2">April 02, 2026</time>
-                </div>
-                <h1 class="blog-title">
-                    AI coding agents suck at security
-                </h1>
-                <div class="blog-meta">
-                    <span class="blog-tags"><span class="blog-tag">ai</span><span class="blog-tag">agents</span><span class="blog-tag">engineering</span><span class="blog-tag">security</span><span class="blog-tag">development</span></span>
-                </div>
-                <p class="blog-excerpt">Most developers extols AI agents. But they are notoriously bad at security.</p>
-            </header>
-
-            <article class="blog-article">
-                <aside>
+                <article class="blog-article">
+                    <aside>
 <p>💡 I LOVE these tools. Codex and Claude Code have likely given me months of my life back at this point and I do not intend to stop using them. I, like millions of developers around the world, use it every day, and I do believe that you are “behind” (at least in the productive kind of way) if you don’t use these tools (for better or for worse). This blog post is about my opinions about privacy, data security, and a little bit of ethics.</p>
 </aside>
 <p>A lot of the current conversation around AI security has the tone of a revelation. Suddenly people are talking about prompt injection, tool abuse, data exfiltration, uncontrolled side effects, and the weird reality that once you give a model filesystem access, shell access, browser access, or messaging access, mistakes stop being abstract. They become operational.</p>
@@ -110,11 +110,12 @@
 <p>If a tool is project-scoped, it should be project-scoped in a way that survives shell commands, absolute paths, symlinks, indexing, and direct reads. If sensitive files are excluded, they should be excluded everywhere. If the model is not allowed to see something, the runtime should make that impossible, not merely discouraged. This feels like the minimum bar for software that’s supposed to operate with agency.</p>
 <p>I’m not confident any of this will actually happen. The industry will likely see it as a feature and not a bug. Determinism is overrated; the very nature of AI is probabilistic. In fact why bother fixing a problem when you can milk it for money? I’m bullish on “AI Insurance” to cover erroneous inference, output liability, data leaks, breaches of trade secrets, etc. I think we’ll be seeing a lot more of these in the coming years.</p>
 <p>As long as this remains unsolved, the people building and buying these tools are taking security more seriously than some of the tools themselves. Who knows, there might be something to build here…</p>
-            </article>
+                </article>
 
-            <p class="blog-kicker">
-                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>AI coding agents suck at security</span>
-            </p>
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>AI coding agents suck at security</span>
+                </p>
+            </div>
         </div>
     </div>
 </div>

@@ -11,28 +11,28 @@
     <link rel="stylesheet" href="/assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>The Comend Stack</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="2026-02-25">February 25, 2026</time>
+                    </div>
+                    <h1 class="blog-title">
+                        The Comend Stack
+                    </h1>
+                    <div class="blog-meta">
+                        <span class="blog-tags"><span class="blog-tag">comend</span><span class="blog-tag">startup</span><span class="blog-tag">web-dev</span><span class="blog-tag">product</span></span>
+                    </div>
+                    <p class="blog-excerpt">My thoughts on the core stack we used at Comend.</p>
+                </header>
 
-            <header class="blog-header">
-                <p class="blog-kicker">
-                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>The Comend Stack</span>
-                </p>
-                <div class="blog-meta">
-                    <time datetime="2026-02-25">February 25, 2026</time>
-                </div>
-                <h1 class="blog-title">
-                    The Comend Stack
-                </h1>
-                <div class="blog-meta">
-                    <span class="blog-tags"><span class="blog-tag">comend</span><span class="blog-tag">startup</span><span class="blog-tag">web-dev</span><span class="blog-tag">product</span></span>
-                </div>
-                <p class="blog-excerpt">My thoughts on the core stack we used at Comend.</p>
-            </header>
-
-            <article class="blog-article">
-                <aside>
+                <article class="blog-article">
+                    <aside>
 <p>💡 This blog is meant to combine elements of a post-mortem, a design doc, and a product documentation page for future maintainers of the product, or anyone trying to build a similar platform.</p>
 </aside>
 <p>Prior to building Comend I had limited experience building “production” apps and sites. Most of my work up until had been in AI/ML, classifying proteins and making molecules. I wanted to become that guy that could build anything. So when we started Comend, I made it a goal to try as many technologies as possible and become that “strong opinions, loosely held” developer. It’d be great if at the end of this I have opinions about how quality products can and should be built, and have a preferred stack that I can always pick up. To that end, we’ve succeeded.</p>
@@ -113,11 +113,12 @@
 <h3>Google OAuth 🟡</h3>
 <p>Google’s identity stack now makes a much clearer distinction between authentication and authorization, which is how it should be. Signing a user in and asking for access to their Google data are not the same action, and treating them as separate flows keeps the UX and the security model cleaner. Under the hood, it is still the standard OAuth 2.0 and OpenID Connect story: scoped access, tokens, refresh behavior, and as little privilege as you can get away with.</p>
 <p>Most of the real work with OAuth is not getting the button on the page. It is correctly handling scopes, token storage, consent, session linking, and the awkward edge cases when a user revokes access or signs in with the wrong Google account. I found it interesting that Google requires <a href="http://localhost">localhost</a> to be listed as an allowed domain while Facebook’s developer dashboard automatically whitelists localhost. Like many things in software, the demo is easy and the production version is where you find out whether you were being serious. Most of the problems I had implementing auth on our platforms had to do with our choice of auth framework. I will not be using next-auth ever again. The time spent wrangling issues and struggling to do what I felt should be out of the box behaviour was too much. Hopefully auth.js fixes those issues, but until then I’ve found better-auth to be the best web auth framework right now.</p>
-            </article>
+                </article>
 
-            <p class="blog-kicker">
-                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>The Comend Stack</span>
-            </p>
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>The Comend Stack</span>
+                </p>
+            </div>
         </div>
     </div>
 </div>

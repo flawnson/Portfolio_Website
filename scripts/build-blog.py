@@ -18,7 +18,7 @@ DATA_DIR = ROOT / "data"
 POST_TEMPLATE = (TEMPLATES_DIR / "blog-post.html").read_text(encoding="utf-8")
 INDEX_TEMPLATE = (TEMPLATES_DIR / "blog-index.html").read_text(encoding="utf-8")
 
-FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
+FRONTMATTER_RE = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*\r?\n(.*)$", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
@@ -46,6 +46,8 @@ class Post:
 
 
 def parse_frontmatter(raw_text: str) -> tuple[dict[str, Any], str]:
+    raw_text = raw_text.lstrip("\ufeff").lstrip()
+
     match = FRONTMATTER_RE.match(raw_text)
     if not match:
         raise ValueError("Missing or invalid frontmatter block.")
@@ -69,7 +71,6 @@ def parse_frontmatter(raw_text: str) -> tuple[dict[str, Any], str]:
             data[key] = [] if not inner else [item.strip().strip('"\'') for item in inner.split(",")]
         else:
             data[key] = value.strip('"\'')
-
     return data, body.strip() + "\n"
 
 
@@ -220,7 +221,7 @@ def load_posts() -> list[Post]:
     posts: list[Post] = []
 
     for path in sorted(CONTENT_DIR.glob("*.md")):
-        raw_text = path.read_text(encoding="utf-8")
+        raw_text = path.read_text(encoding="utf-8-sig")
         frontmatter, body = parse_frontmatter(raw_text)
 
         required = ["title", "slug", "date", "excerpt", "published"]

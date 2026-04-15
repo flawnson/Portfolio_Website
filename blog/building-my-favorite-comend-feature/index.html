@@ -11,28 +11,28 @@
     <link rel="stylesheet" href="/assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="2025-07-24">July 24, 2025</time>
+                    </div>
+                    <h1 class="blog-title">
+                        Building the Comend Feed - my favorite feature
+                    </h1>
+                    <div class="blog-meta">
+                        <span class="blog-tags"><span class="blog-tag">comend</span><span class="blog-tag">engineering</span><span class="blog-tag">product</span></span>
+                    </div>
+                    <p class="blog-excerpt">I had the most fun building the Feed feature on Comend.</p>
+                </header>
 
-            <header class="blog-header">
-                <p class="blog-kicker">
-                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
-                </p>
-                <div class="blog-meta">
-                    <time datetime="2025-07-24">July 24, 2025</time>
-                </div>
-                <h1 class="blog-title">
-                    Building the Comend Feed - my favorite feature
-                </h1>
-                <div class="blog-meta">
-                    <span class="blog-tags"><span class="blog-tag">comend</span><span class="blog-tag">engineering</span><span class="blog-tag">product</span></span>
-                </div>
-                <p class="blog-excerpt">I had the most fun building the Feed feature on Comend.</p>
-            </header>
-
-            <article class="blog-article">
-                <p>There are some <a href="https://www.wired.com/2016/09/everyone-hated-news-feed-then-it-became-facebooks-most-important-product/">great</a> <a href="https://www.eugenewei.com/blog/2019/2/19/status-as-a-service#:~:text=the%20greatest%20social%20capital%20creation%20event%20in%20tech%20history">articles</a> about how an effective feed can completely reshape the internet. Facebook’s News Feed turned social media into a battle royale of attention and FOMO. This isn’t that kind of feed.</p>
+                <article class="blog-article">
+                    <p>There are some <a href="https://www.wired.com/2016/09/everyone-hated-news-feed-then-it-became-facebooks-most-important-product/">great</a> <a href="https://www.eugenewei.com/blog/2019/2/19/status-as-a-service#:~:text=the%20greatest%20social%20capital%20creation%20event%20in%20tech%20history">articles</a> about how an effective feed can completely reshape the internet. Facebook’s News Feed turned social media into a battle royale of attention and FOMO. This isn’t that kind of feed.</p>
 <p>One of the late-stage features we built on Comend was the Feed. The Feed was our way of turning a messy mix of product activity into one clean, usable stream. Instead of only showing user actions, it was designed to pull together internal events, system-generated updates, and third party activity into a single timeline that could still respect scope, deduplicate reliably, and stay easy to query and render. I was particularly excited about tracking relevant content from sources like <a href="https://www.fda.gov/safety/medwatch-fda-safety-information-and-adverse-event-reporting-program/medwatch-rss-feed">FDA Alerts</a>, new <a href="https://www.ncbi.nlm.nih.gov/home/develop/api/">PubMed papers</a>, and activity from <a href="https://clinicaltrials.gov/find-studies/rss">clinicaltrials.gov</a>.</p>
 <p>The goal was to make the frontend feel simple without making the backend naïve. We wanted it to be performant without having to add any new technology (stick to our existing stack of Next.js and PostgreSQL), and still have the confidence that it can scale to thousands of posts from hundreds of sources. We wanted a feed that could scale across many event types and sources, normalize them into one stable model, and let the UI focus on presenting the right card rather than trying to interpret raw activity itself.</p>
 <p>Frontend for feed features is pretty simple:</p>
@@ -106,11 +106,12 @@
 <p>What helped a lot while building this was the time I spent many years ago studying design patterns on <a href="https://refactoring.guru/">Refactoring Guru’s website</a>. Some patterns I used just for this implementation (yes I asked codex to tell me what were used) include:</p>
 <ul><li>mapper lookup by type/provider → <strong>Strategy</strong></li><li>feed card registry by item type → <strong>Strategy</strong></li><li>canonical event creation → often <strong>Factory Method</strong> or <strong>Builder</strong></li><li>staged processing flow → loosely <strong>Template Method</strong></li><li>generic fallback wrappers around specialized renderers → sometimes <strong>Decorator</strong></li><li>feed composed of many item renderers → lightly <strong>Composite</strong></li><li>infinite feed traversal/pagination → <strong>Iterator</strong></li><li>event-driven UI updates / subscriptions, if present elsewhere → <strong>Observer</strong></li></ul>
 <p>Comend’s Feed looked like a timeline on the surface, but the more reusable pattern underneath was really about normalization: taking messy, heterogeneous activity and turning it into something consistent, scoped, and understandable. Although it was never the core feature we emphasized to users, it was still my favourite feature of all the things we built.</p>
-            </article>
+                </article>
 
-            <p class="blog-kicker">
-                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
-            </p>
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Building the Comend Feed - my favorite feature</span>
+                </p>
+            </div>
         </div>
     </div>
 </div>

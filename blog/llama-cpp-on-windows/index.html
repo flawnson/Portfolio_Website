@@ -11,28 +11,28 @@
     <link rel="stylesheet" href="/assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="2025-03-05">March 05, 2025</time>
+                    </div>
+                    <h1 class="blog-title">
+                        Quick guide on getting llama.cpp up and running on Windows
+                    </h1>
+                    <div class="blog-meta">
+                        <span class="blog-tags"><span class="blog-tag">llm</span><span class="blog-tag">windows</span><span class="blog-tag">llama.cpp</span></span>
+                    </div>
+                    <p class="blog-excerpt">A practical guide to running llama.cpp on Windows with downloadable binaries and GGUF models.</p>
+                </header>
 
-            <header class="blog-header">
-                <p class="blog-kicker">
-                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
-                </p>
-                <div class="blog-meta">
-                    <time datetime="2025-03-05">March 05, 2025</time>
-                </div>
-                <h1 class="blog-title">
-                    Quick guide on getting llama.cpp up and running on Windows
-                </h1>
-                <div class="blog-meta">
-                    <span class="blog-tags"><span class="blog-tag">llm</span><span class="blog-tag">windows</span><span class="blog-tag">llama.cpp</span></span>
-                </div>
-                <p class="blog-excerpt">A practical guide to running llama.cpp on Windows with downloadable binaries and GGUF models.</p>
-            </header>
-
-            <article class="blog-article">
-                <p>Quick guide on getting llama cpp up and running on Windows. I’m using downloadable binaries and not the llama cpp cli.</p>
+                <article class="blog-article">
+                    <p>Quick guide on getting llama cpp up and running on Windows. I’m using downloadable binaries and not the llama cpp cli.</p>
 <h1>Download binaries</h1>
 <p>Go to the Llama cpp github repository and navigate to the <a href="https://github.com/ggml-org/llama.cpp/releases">latest release</a>. There should be a list of downloadable tar.gz files to download and unpack. For an RTX 5090 setup, use:</p>
 <ul><li>Windows x64 (CUDA 13) - CUDA 13.1 DLLs</li></ul>
@@ -110,11 +110,12 @@ if /I &quot;%PROC%&quot;==&quot;llama-server.exe&quot; (
 <ul><li>right-click the shortcut</li><li>open <strong>Properties</strong></li><li>in <strong>Target</strong>, change it from the batch file path to:</li></ul>
 <pre><code>C:\Windows\System32\cmd.exe /c &quot;C:\Users\Flawnson\start-llama-router.bat&quot;</code></pre>
 <p>That’s it. You should able to use it like any other application on your computer now.</p>
-            </article>
+                </article>
 
-            <p class="blog-kicker">
-                <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
-            </p>
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Quick guide on getting llama.cpp up and running on Windows</span>
+                </p>
+            </div>
         </div>
     </div>
 </div>

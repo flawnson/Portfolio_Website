@@ -2,7 +2,7 @@
 title: AI coding agents suck at security
 slug: ai-coding-agents-suck-at-security
 date: 2026-04-2
-excerpt: Most developers extols AI agents. But they are notoriously bad at security.
+excerpt: Most developers extol AI agents. But they are notoriously bad at security.
 tags: [ai, agents, engineering, security, development]
 published: true
 ---

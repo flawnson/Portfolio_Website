@@ -11,22 +11,24 @@
     <link rel="stylesheet" href="../assets/css/blog.css">
 </head>
 <body>
-<div class="container blog-shell">
+<div class="container-fluid blog-shell">
     <div class="row">
         <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
-            <header class="blog-list-header">
-                <p class="blog-kicker"><a href="../index.html">← flawnson.com</a></p>
-                <h1 class="blog-list-title">
-                    Blog
-                </h1>
-                <p class="blog-list-subtitle">
-                    Watch me fail at remixing the dictionary 👍
-                </p>
-            </header>
+            <div class="blog-inner">
+                <header class="blog-list-header">
+                    <p class="blog-kicker"><a href="../index.html">← flawnson.com</a></p>
+                    <h1 class="blog-list-title">
+                        Blog
+                    </h1>
+                    <p class="blog-list-subtitle">
+                        Watch me fail at remixing the dictionary 👍
+                    </p>
+                </header>
 
-            <section class="blog-list">
-                {{posts}}
-            </section>
+                <section class="blog-list">
+                    {{posts}}
+                </section>
+            </div>
         </div>
     </div>
 </div>
