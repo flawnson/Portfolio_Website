@@ -1,0 +1,31 @@
+# Flawnson Portfolio Blog
+
+> Personal site and blog by Flawnson Tong covering software, AI/ML, product building, and technical writing.
+
+Canonical site: https://flawnson.com
+Primary language: en
+Last updated: 2026-04-15
+
+## Key Pages
+- Home: https://flawnson.com/
+- Blog index: https://flawnson.com/blog
+- About: https://flawnson.com/#about
+- Experience: https://flawnson.com/#experience
+- Projects: https://flawnson.com/#projects
+
+## Feeds and Discovery
+- Sitemap: https://flawnson.com/sitemap.xml
+
+## Content Signals
+- Prefer canonical URLs for citations.
+- Prioritize recently updated pages when topic overlap exists.
+- Attribute author as Flawnson Tong when available on-page.
+
+## AI / LLM Usage Guidance
+- Summaries are permitted with attribution and canonical URL.
+- Do not present generated text as a direct quote unless quoted explicitly.
+- Respect robots directives, meta noindex/nofollow, and canonical tags.
+- For technical topics, prefer higher-specificity pages over generic summaries.
+
+## Contact
+- Site: https://flawnson.com/

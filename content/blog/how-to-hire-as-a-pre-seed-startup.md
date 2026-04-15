@@ -7,7 +7,7 @@ tags: [comend, hiring, relationships, startup]
 published: true
 ---
 
-Comend was my “first” for many things, including hiring. When Albert and I raised our second cheque, our first order of business was bringing on talent to build product. Like anyone running a process for the first time, we talked to a lot of people and tried many strategies. It feels like these days everyone is either hiring or looking for work. I suppose there really are two types of people in the world.
+[Comend](https://comend.io/) was my “first” for many things, including hiring. When Albert and I raised our second cheque, our first order of business was bringing on talent to build product. Like anyone running a process for the first time, we talked to a lot of people and tried many strategies. It feels like these days everyone is either hiring or looking for work. I suppose there really are two types of people in the world.
 
 This post isn’t about the actual pipeline/system we had in place to evaluate candidates, this was about how we sourced them.
 

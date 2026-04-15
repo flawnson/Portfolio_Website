@@ -10,7 +10,7 @@ published: true
 💡 This blog is meant to combine elements of a post-mortem, a design doc, and a product documentation page for future maintainers of the product, or anyone trying to build a similar platform.
 </aside>
 
-Prior to building Comend I had limited experience building “production” apps and sites. Most of my work up until had been in AI/ML, classifying proteins and making molecules. I wanted to become that guy that could build anything. So when we started Comend, I made it a goal to try as many technologies as possible and become that “strong opinions, loosely held” developer. It’d be great if at the end of this I have opinions about how quality products can and should be built, and have a preferred stack that I can always pick up. To that end, we’ve succeeded.
+Prior to building [Comend](https://comend.io/) I had limited experience building “production” apps and sites. Most of my work up until had been in AI/ML, classifying proteins and making molecules. I wanted to become that guy that could build anything. So when we started Comend, I made it a goal to try as many technologies as possible and become that “strong opinions, loosely held” developer. It’d be great if at the end of this I have opinions about how quality products can and should be built, and have a preferred stack that I can always pick up. To that end, we’ve succeeded.
 
 I’ve organized this article by decision layer common for engineering teams. We built three products, used a wide spread of modern web tooling, and came out the other side with opinions about what was worth the complexity and what was not. Naturally, everyone on our small team has had to wear all of these hats at some point! In each section I’ll explain what we used, why we picked it, and how we used it.
 

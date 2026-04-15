@@ -7,7 +7,7 @@ tags: [comend, product, users]
 published: true
 ---
 
-When we started building Comend, we were not building for a user base that was waiting to be impressed.
+When we started building [Comend](https://comend.io/), we were not building for a user base that was waiting to be impressed.
 
 We were building for rare disease caregivers and patient groups.
 
