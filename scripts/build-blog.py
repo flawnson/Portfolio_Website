@@ -14,6 +14,12 @@ CONTENT_DIR = ROOT / "content" / "blog"
 TEMPLATES_DIR = ROOT / "templates"
 OUTPUT_DIR = ROOT / "blog"
 DATA_DIR = ROOT / "data"
+SITE_URL = "https://flawnson.com"
+AUTHOR_NAME = "Flawnson Tong"
+AUTHOR_URL = f"{SITE_URL}/#person"
+PUBLISHER_NAME = "Flawnson"
+PUBLISHER_LOGO_URL = f"{SITE_URL}/assets/images/Favicon.png"
+DEFAULT_BLOG_IMAGE = f"{SITE_URL}/assets/images/profile%202.jpg"
 
 POST_TEMPLATE = (TEMPLATES_DIR / "blog-post.html").read_text(encoding="utf-8")
 INDEX_TEMPLATE = (TEMPLATES_DIR / "blog-index.html").read_text(encoding="utf-8")
@@ -43,6 +49,10 @@ class Post:
     @property
     def date_display(self) -> str:
         return self.date_obj.strftime("%B %d, %Y")
+
+    @property
+    def date_schema(self) -> str:
+        return self.date_obj.strftime("%Y-%m-%d")
 
 
 def parse_frontmatter(raw_text: str) -> tuple[dict[str, Any], str]:
@@ -250,11 +260,76 @@ def load_posts() -> list[Post]:
 def build_post(post: Post) -> None:
     output_dir = OUTPUT_DIR / post.slug
     output_dir.mkdir(parents=True, exist_ok=True)
+    post_url = f"{SITE_URL}/blog/{post.slug}/"
 
     tags_html = ""
     if post.tags:
         rendered_tags = "".join(f'<span class="blog-tag">{html.escape(tag)}</span>' for tag in post.tags)
         tags_html = f'<span class="blog-tags">{rendered_tags}</span>'
+
+    structured_data = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "BlogPosting",
+                "@id": f"{post_url}#article",
+                "headline": post.title,
+                "description": post.excerpt,
+                "image": [DEFAULT_BLOG_IMAGE],
+                "author": {
+                    "@type": "Person",
+                    "name": AUTHOR_NAME,
+                    "url": AUTHOR_URL,
+                },
+                "publisher": {
+                    "@type": "Organization",
+                    "name": PUBLISHER_NAME,
+                    "url": SITE_URL,
+                    "logo": {
+                        "@type": "ImageObject",
+                        "url": PUBLISHER_LOGO_URL,
+                    },
+                },
+                "datePublished": post.date_schema,
+                "dateModified": post.date_schema,
+                "mainEntityOfPage": post_url,
+                "keywords": post.tags,
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Home",
+                        "item": f"{SITE_URL}/",
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "Blog",
+                        "item": f"{SITE_URL}/blog/",
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 3,
+                        "name": post.title,
+                        "item": post_url,
+                    },
+                ],
+            },
+            {
+                "@type": "Organization",
+                "@id": f"{SITE_URL}/#organization",
+                "name": PUBLISHER_NAME,
+                "url": f"{SITE_URL}/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": PUBLISHER_LOGO_URL,
+                },
+            },
+        ],
+    }
 
     html_output = POST_TEMPLATE
     replacements = {
@@ -265,6 +340,8 @@ def build_post(post: Post) -> None:
         "{{tags_html}}": tags_html,
         "{{content}}": post.body_html,
         "{{root_path}}": "../",
+        "{{canonical_url}}": post_url,
+        "{{structured_data_json}}": json.dumps(structured_data, ensure_ascii=False),
     }
 
     for key, value in replacements.items():
