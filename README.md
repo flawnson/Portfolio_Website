@@ -21,10 +21,10 @@ I use cPanel's MySQL database to store my posts.
 Initialized with:
 ```SQL
 CREATE TABLE micro_posts (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  body TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  is_published TINYINT(1) NOT NULL DEFAULT 1
+                             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                             body TEXT NOT NULL,
+                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                             is_published TINYINT(1) NOT NULL DEFAULT 1
 );
 ```
 Emoji support:
@@ -43,15 +43,20 @@ You can find it in the [Flitter](https://github.com/flawnson/flitter) repo on my
 This is a simple python-rendered markdown blog.
 
 When I create or edit a post, I run the following command to build the blog:
-```python
+```bash
 python scripts/build-blog.py
 ```
 Then deploy my site like normal.
+
+To see changes to website update live:
+```bash
+python -m http.server 8000
+```
 
 # Analytics
 I use onedollarstats to track page views.
 
 # Ideas
-[] A guestbook for site visitors to leave a note or sticker
-[] A searchable feed of Flitter
-[] Table of contents for blog posts
+- [ ] A guestbook for site visitors to leave a note or sticker
+- [ ] A searchable feed of Flitter
+- [x] Table of contents for blog posts

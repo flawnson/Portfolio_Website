@@ -4,6 +4,8 @@ declare(strict_types=1);
 $allowedOrigins = [
     'https://flawnson.com',
     'http://localhost:63342',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -49,17 +51,34 @@ try {
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $limit = isset($_GET["limit"]) ? (int) $_GET["limit"] : 50;
     $limit = max(1, min($limit, 100));
+    $beforeId = isset($_GET["before_id"]) ? (int) $_GET["before_id"] : 0;
 
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT id, body, created_at
         FROM micro_posts
-        ORDER BY created_at DESC, id DESC
-        LIMIT :limit
-    ");
-    $stmt->bindValue(":limit", $limit, PDO::PARAM_INT);
+    ";
+
+    if ($beforeId > 0) {
+        $sql .= " WHERE id < :before_id ";
+    }
+
+    $sql .= "
+        ORDER BY id DESC
+        LIMIT :limit_plus_one
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    if ($beforeId > 0) {
+        $stmt->bindValue(":before_id", $beforeId, PDO::PARAM_INT);
+    }
+    $stmt->bindValue(":limit_plus_one", $limit + 1, PDO::PARAM_INT);
     $stmt->execute();
 
     $posts = $stmt->fetchAll();
+    $hasMore = count($posts) > $limit;
+    if ($hasMore) {
+        array_pop($posts);
+    }
 
     $posts = array_map(static function (array $post): array {
         return [
@@ -69,7 +88,19 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         ];
     }, $posts);
 
-    respond(200, ['posts' => $posts]);
+    $nextBeforeId = null;
+    if (!empty($posts)) {
+        $lastPost = end($posts);
+        if (is_array($lastPost) && isset($lastPost['id'])) {
+            $nextBeforeId = (int) $lastPost['id'];
+        }
+    }
+
+    respond(200, [
+        'posts' => $posts,
+        'has_more' => $hasMore,
+        'next_before_id' => $nextBeforeId,
+    ]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
