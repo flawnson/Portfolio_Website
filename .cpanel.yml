@@ -4,6 +4,7 @@ deployment:
     - export DEPLOYPATH=/home/flawhvna/public_html/
     - /bin/mkdir -p $DEPLOYPATH/api
     - /bin/mkdir -p $DEPLOYPATH/blog
+    - /bin/mkdir -p $DEPLOYPATH/flitter
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp maintenance-page.html $DEPLOYPATH
