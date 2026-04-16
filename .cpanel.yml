@@ -10,5 +10,6 @@ deployment:
     - /bin/cp robots.txt $DEPLOYPATH
     - /bin/cp sitemap.xml $DEPLOYPATH
     - /bin/cp -R blog/* $DEPLOYPATH/blog/
+    - /bin/cp -R flitter/* $DEPLOYPATH/flitter/
     - /bin/cp api/micro-posts.php $DEPLOYPATH/api/micro-posts.php
     - /bin/cp api/github-last-commit.php $DEPLOYPATH/api/github-last-commit.php
