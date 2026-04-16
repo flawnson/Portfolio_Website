@@ -6,6 +6,7 @@ excerpt: My thoughts on the core stack we used at Comend.
 tags: [comend, startup, web-dev, product]
 published: true
 ---
+
 <aside>
 💡 This blog is meant to combine elements of a post-mortem, a design doc, and a product documentation page for future maintainers of the product, or anyone trying to build a similar platform.
 </aside>

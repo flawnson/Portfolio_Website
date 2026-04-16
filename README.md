@@ -53,6 +53,25 @@ To see changes to website update live:
 python -m http.server 8000
 ```
 
+## Images
+How to use images in posts:
+```markdown
+![My screenshot](demo.png)
+```
+demo.png auto-resolves to /assets/images/blog/demo.png.
+```markdown
+![Architecture diagram](/assets/images/blog/diagram.webp)
+![Animated flow](https://example.com/flow.gif)
+```
+Resize/align options (in alt text, after |):
+```markdown
+![Demo image|sm](demo.gif)
+![Wide chart|full](chart.png)
+![Logo|w=240](logo.svg)
+![Hero|w=75%|max=900|right](hero.jpg)
+![Thumb|xs|left](thumb.webp)
+```
+
 # Analytics
 I use onedollarstats to track page views.
 

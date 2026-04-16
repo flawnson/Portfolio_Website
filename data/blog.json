@@ -13,6 +13,17 @@
     ]
   },
   {
+    "title": "Websites Were Made to Be Scraped",
+    "slug": "websites-were-made-to-be-scraped",
+    "date": "2026-03-18",
+    "excerpt": "You either die a hero, or live long enough to scrape data. This is how I like to do it.",
+    "tags": [
+      "engineering",
+      "programming",
+      "development"
+    ]
+  },
+  {
     "title": "The Comend Stack",
     "slug": "the-comend-stack",
     "date": "2026-02-25",

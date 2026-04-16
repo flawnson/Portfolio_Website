@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Websites Were Made to Be Scraped | Flawnson</title>
+    <meta name="description" content="You either die a hero, or live long enough to scrape data. This is how I like to do it.">
+    <link rel="canonical" href="https://flawnson.com/blog/websites-were-made-to-be-scraped/">
+    <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
+    <link rel="stylesheet" href="/assets/css/bootstrap.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/blog.css">
+    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "BlogPosting", "@id": "https://flawnson.com/blog/websites-were-made-to-be-scraped/#article", "headline": "Websites Were Made to Be Scraped", "description": "You either die a hero, or live long enough to scrape data. This is how I like to do it.", "image": ["https://flawnson.com/assets/images/profile%202.jpg"], "author": {"@type": "Person", "name": "Flawnson Tong", "url": "https://flawnson.com/#person"}, "publisher": {"@type": "Organization", "name": "Flawnson", "url": "https://flawnson.com", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}, "datePublished": "2026-03-18", "dateModified": "2026-03-18", "mainEntityOfPage": "https://flawnson.com/blog/websites-were-made-to-be-scraped/", "keywords": ["engineering", "programming", "development"]}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://flawnson.com/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://flawnson.com/blog/"}, {"@type": "ListItem", "position": 3, "name": "Websites Were Made to Be Scraped", "item": "https://flawnson.com/blog/websites-were-made-to-be-scraped/"}]}, {"@type": "Organization", "@id": "https://flawnson.com/#organization", "name": "Flawnson", "url": "https://flawnson.com/", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}]}</script>
+</head>
+<body>
+<div class="container-fluid blog-shell">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
+            <div class="blog-inner">
+                <header class="blog-header">
+                    <p class="blog-kicker">
+                        <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Websites Were Made to Be Scraped</span>
+                    </p>
+                    <div class="blog-meta">
+                        <time datetime="2026-03-18">March 18, 2026</time>
+                    </div>
+                    <h1 class="blog-title">
+                        Websites Were Made to Be Scraped
+                    </h1>
+                    <div class="blog-meta">
+                        <span class="blog-tags"><span class="blog-tag">engineering</span><span class="blog-tag">programming</span><span class="blog-tag">development</span></span>
+                    </div>
+                    <p class="blog-excerpt">You either die a hero, or live long enough to scrape data. This is how I like to do it.</p>
+                </header>
+
+                <article class="blog-article">
+                    <p><img src="/assets/images/blogs/batman-batman-the-animated-series.gif" alt="Animated flow" class="blog-image blog-image-align-center" loading="lazy" decoding="async"></p>
+<p>I’ve scraped over 200 sites that include Shopify stores, event catalogs, company marketplaces, and much more. In my opinion, chasing perfect evasion is pointless. It’s fun to figure out how to outsmart the site, I’m here for the data. Assume you will face guardrails, captchas, and rate limits. A good scraper is one that is stable, portable, restartable, polite, and shaped around the path of least resistance to the data. If you do that consistently, you can get very far without turning the job into a cat-and-mouse game.</p>
+<p>I’m writing this both to document what has worked for me and to hopefully help someone figuring this out. At the end of the article is a copy and pasteable LLM instruction prompt, so you can just give it the site you want scraped and it can just pump out a script you can run right away. LLMs were indispensable every time I had a site to scrape.</p>
+<aside class="blog-aside">
+<p>‼️ Scraping is easy to get wrong. Even when the data looks public, you can still run into rate limits, brittle page changes, bad data quality, privacy issues, terms-of-service problems, or legal risk if you access the wrong surfaces or collect the wrong information. Treat scraping as an engineering and policy problem, not just a scripting problem: be conservative, be polite, and assume that “it works” is not the same thing as “it is safe.”</p>
+</aside>
+<h1 id="1-start-by-asking-what-the-site-is-really-giving-you">1. Start by asking what the site is really giving you</h1>
+<p>Inspect the site like an engineer, not a tourist. You are looking for the cheapest trustworthy source of truth.</p>
+<p>That usually means checking, in order:</p>
+<ul><li>public JSON endpoints</li><li>XHR or fetch requests in the network tab</li><li>pagination endpoints</li><li>sitemap or index pages</li><li>stable server-rendered HTML</li><li>only then, a headless browser</li></ul>
+<p>You want to avoid writing a scraping script for a site before realizing that it has an exposed endpoint you can use. A lot of people jump straight to Playwright or Puppeteer when it’s usually overkill. If the site already exposes public structured data, use that.</p>
+<p>Check the network tab of inspect element. You’d be surprised how many projects leave their API endpoints available for querying. You can often guess at what frameworks they’re using just based on the shape of the URL endpoint args. Back when <a href="https://aminochain.io/">AminoChain</a> were still in beta, I guessed at their beta’s sign in page (often an orphan link at the /signin or /login page), signed in like a normal user, and queried their API to access all &gt;300K biosamples they had at the time (they were using elasticsearch, which required some tricks to get around their <strong><code>max_result_window</code></strong>). I could download any subset of it that I wanted.</p>
+<p>That is one of the strongest recurring patterns in my own scripts. On Shopify-like storefronts, the best move is often not “scrape the page.” It is “find the public product JSON and start there.” One script I wrote deliberately tries collection JSON first, then falls back to the global products endpoint, and only uses HTML when it adds real value. A products.json that might just have all the data you need, or at least serve as a starting point for further scraping. Data will be cleaner, load faster, and in bulk.</p>
+<p>The first rule of robust scraping is simple:</p>
+<p><strong>Do not scrape unless you have to.</strong></p>
+<h1 id="2-decide-whether-your-source-is-breadth-depth-or-both">2. Decide whether your source is breadth, depth, or both</h1>
+<p>Once you know where the data lives, decide what each source is good for. Generally, the data you’re looking for can be classified as either one involving breadth or depth.</p>
+<p>Breadth: all products, all listings, all records, all result pages.</p>
+<p>Depth: metadata, detail fields, descriptions, attachments, normalized labels.</p>
+<p>A good example of this pattern in my own work is the tea scrapers that uses Shopify collection JSON to get the full product catalog, then fetches product HTML only to enrich each record with the fields that were missing or messy in the JSON feed. That is a much saner design than pretending HTML should do everything. JSON gives you coverage. HTML gives you nuance. If nothing else, at least you can cross reference what rendered sites give you against what the API serves.</p>
+<p>If you are building your own scraper, decide early:</p>
+<ul><li>what endpoint gives me the inventory of things</li><li>what page gives me the full detail for each thing</li><li>whether I actually need both</li></ul>
+<p>A surprising amount of scraper quality comes from making that split explicitly.</p>
+<h1 id="3-shape-your-output-before-you-scrape-anything">3. Shape your output before you scrape anything</h1>
+<p>This is where most scripts quietly become unmaintainable.</p>
+<p>Don’t start by “just grabbing fields,” then six hours later end up with a weird bag of half-clean strings and no idea how to use them.</p>
+<p>I try to define the output shape first.</p>
+<p>Not just <code>title</code> and <code>url</code>, but an actual record with structure:</p>
+<ul><li>source metadata</li><li>canonical entity fields</li><li>raw extracted fields</li><li>derived fields</li><li>images or attachments</li><li>provenance</li></ul>
+<p>Ideally you have a well thought-out and written schema, complete with attribute names, types, and relations. In many of my Shopify scrapers, every record already looks like an application object instead of a dump: source, company, vendor, tea, purchaseLinks, images, tags, categories. In another, the output is organized around <code>teaCore</code>, <code>purchaseLinks</code>, <code>images</code>, <code>notes</code>, and <code>raw</code>. That kind of structure saves you from doing a second ETL job later just to make the first one usable.</p>
+<p>If you are writing your own scraper, decide up front:</p>
+<ul><li>what is canonical data</li><li>what is best-effort inferred data (and potentially nullable/optional)</li><li>what raw context should be preserved for debugging</li></ul>
+<p>That one decision will improve the rest of the script more than any library choice.</p>
+<h1 id="4-build-discovery-separately-from-extraction">4. Build discovery separately from extraction</h1>
+<p>There are really two problems in most scraping jobs:</p>
+<ol><li>find the things</li><li>extract the things</li></ol>
+<p>Give each problem due effort. A lot of more reliable scrapers start with a list of targets:</p>
+<ul><li>product handles</li><li>detail page URLs</li><li>result page URLs</li><li>sitemap entries</li><li>search result links</li></ul>
+<p>Then they run extraction over that stable list.</p>
+<p>Several of my scripts follow this pattern. The contract research scrapers treat URL discovery as a separate stage, then iterate over a filtered set of target pages for the actual extraction. My scripts to scrape rare disease patient groups first gathers links from results pages, deduplicates them, and only then goes page by page for detail extraction. That separation makes failure recovery much easier because you know whether discovery failed or extraction failed. If you ever have to resume the job, re-run part of it, or inspect why output is incomplete, you want discovery and extraction to be separable.</p>
+<h1 id="5-prefer-stable-selectors-over-clever-selectors">5. Prefer stable selectors over clever selectors</h1>
+<p>The best selectors are usually based on:</p>
+<ul><li>stable labels</li><li>repeated content blocks</li><li>table structure</li><li>semantic headings</li><li>predictable URLs</li><li>obvious DOM regions</li></ul>
+<p>The worst selectors are usually styling-dependent keywords that are prone to changing.</p>
+<p>A good pattern is to anchor extraction to human-readable labels like “Year Established,” “Website,” or “Certifications,” then read the nearby content. Another is to identify a repeated listing card and extract the same internal fields from each card. That’s the kind of thing I’ve done in directory-style scrapers and logged-in data extractors. It’s much easier to maintain than trying to reverse-engineer every CSS flourish on the page.</p>
+<p>If the designer changes colors and spacing tomorrow, does the scraper still work?</p>
+<p>If the answer is no, the selector is probably too fragile.</p>
+<h1 id="6-normalize-as-you-extract-not-six-scripts-later">6. Normalize as you extract, not six scripts later</h1>
+<p>Raw scraped text is full of garbage:</p>
+<ul><li>duplicated whitespace</li><li>HTML entities</li><li>inconsistent capitalization</li><li>missing units</li><li>multi-value fields jammed into one string</li><li>empty placeholders that look real</li><li>artifacts from unclean renders or requests</li></ul>
+<p>You want small utilities for normalization from day one.</p>
+<p>Things like:</p>
+<ul><li>trim and collapse whitespace</li><li>decode common entities</li><li>normalize URLs</li><li>parse tags consistently</li><li>coerce numbers safely</li><li>dedupe arrays</li><li>strip HTML into readable text</li></ul>
+<p>These are simple, reusable functions that will keep the data you scrape clean.</p>
+<p>You can see this pattern all over my scripts: helper functions for clean text, unique arrays, safe number parsing, normalized URLs, tag parsing, basic HTML stripping, title-cased field names. Those helpers make the rest of the extractor boring, which is exactly what you want.</p>
+<p>Good scraping code is often just disciplined text hygiene wrapped around network requests.</p>
+<p>But how do you decide what belongs in the scraping script vs what belongs in a seed script, or maybe a processing/normalization script?</p>
+<p>A good rule is that the scraping script should do only what’s necessary to reliably fetch and extract the source data. If a piece of logic depends on discovering targets first, like generating URLs, collecting handles, or expanding a sitemap, that usually belongs in a seed script. If a piece of logic is about cleaning, reshaping, deduplicating, classifying, or enriching data after extraction, that usually belongs in a processing or normalization script.</p>
+<p>I try not to make the scraper too smart. The scraper’s job is to get the data out without losing useful context. The seed script’s job is to decide what to fetch. The processing script’s job is to make the output more usable. It should be a funnel; you should only lose data going from raw to processed. Keeping those concerns separate makes the whole system easier to debug, easier to resume, and much easier to change when the site inevitably moves something around.</p>
+<h1 id="7-capture-both-extracted-fields-and-inferred-fields">7. Capture both extracted fields and inferred fields</h1>
+<p>A lot of scraped data becomes useful only after you interpret it a little.</p>
+<p>When I was scraping teas, that meant:</p>
+<ul><li>inferring category from title, tags, and description</li><li>inferring caffeine level from text</li><li>extracting labelled fields from product descriptions</li><li>mapping tasting notes into a normalized vocabulary</li><li>collapsing variant options into a purchase unit</li></ul>
+<p>The important thing is not to blur the line between extracted and inferred.</p>
+<p>Keep both.</p>
+<p>One of my tea scripts does this well. It stores the original fields it extracted from the HTML, then separately adds inferred category, caffeine level, forms, brewing guidance, and mapped tasting notes. That gives you something standardized without losing the underlying evidence.</p>
+<p>That is a pattern worth copying:</p>
+<ul><li>preserve the raw source</li><li>preserve the parsed field</li><li>preserve the inferred interpretation</li></ul>
+<p>That way future you can debug the logic without having to re-scrape the world.</p>
+<h1 id="8-make-the-scraper-restartable-before-you-think-you-need-it">8. Make the scraper restartable before you think you need it</h1>
+<p>Assume interruption is normal; networks fail, sites flake, laptops sleep, containers restart, long jobs die. The plus side is that with this pattern, you can leave your script running with confidence that even if it fails halfway, you can always just resume it when you get back.</p>
+<p>That means your script should do at least some of the following:</p>
+<ul><li>write incrementally</li><li>save current progress</li><li>resume from a checkpoint</li><li>handle <code>SIGINT</code> cleanly</li><li>avoid holding everything in memory until the end</li></ul>
+<p>A few of my scrapers are built exactly this way. One saves a <code>currentIndex</code> and <code>results</code> object so it can resume after interruption. Another saves after every results page. Another appends JSONL continuously and closes the browser on shutdown. Unless I’m 100% confident that my script can get all the data I want in one shot (and in less than 10 mins), I always make my script restartable.</p>
+<p>If your job is long enough to care about, it is long enough to checkpoint.</p>
+<p>A very practical default is JSONL. One record per line. Easy to append. Easy to inspect. Easy to recover from partial runs.</p>
+<h1 id="9-handle-rate-limits-like-an-adult">9. Handle rate limits like an adult</h1>
+<p>A lot of scraping pain is self-inflicted.</p>
+<p>If you hammer a site with aggressive concurrency, fixed timing, and no retry logic, you are not writing a strong scraper. You are writing a short-lived one.</p>
+<p>The patterns that have held up best for me are:</p>
+<ul><li>small bounded concurrency</li><li>randomized jitter between requests</li><li>exponential backoff for transient failures</li><li>special handling for 429s</li><li>global pause windows when the site tells you to slow down</li><li>retry only the status codes that deserve it</li></ul>
+<p>My Shopify tea scraping scripts use this pattern: randomized delays, capped concurrency, retry budgets, and shared pause logic when the site returns 429. That makes the job slower in the small and much faster in the large because the run actually finishes.</p>
+<p>A resilient scraper is not the one with the highest requests per second, it’s the one that still works later.</p>
+<h1 id="10-use-a-browser-only-when-the-page-deserves-it">10. Use a browser only when the page deserves it</h1>
+<p>Headless browsers are great. They are also heavy, slower, and more failure-prone than direct HTTP.</p>
+<p>So use them when you need them:</p>
+<ul><li>JS-rendered listings</li><li>tabbed content</li><li>client-side pagination</li><li>interactions required to reveal data</li><li>authenticated sessions you are permitted to access</li></ul>
+<p>My own scripts reflect that split. Shopify JSON gets handled over HTTP because that is the right tool. Directory sites and JS-heavy pages get Puppeteer because a browser is genuinely required to surface the content. The logged-in Scientist script also uses a browser because the content and navigation justify it.</p>
+<h1 id="11-separate-orchestration-from-page-scraping-for-large-jobs">11. Separate orchestration from page scraping for large jobs</h1>
+<p>Once a scrape gets big enough, you should stop treating it like one script.</p>
+<p>Split it up.</p>
+<p>For example:</p>
+<ul><li>one script discovers targets</li><li>one script extracts a page</li><li>one runner fans out jobs</li><li>one sink writes to storage</li></ul>
+<p>That pattern shows up in my contract research workflow. One version delegates page scraping to a cloud function and just orchestrates requests plus result collection. That is a very useful shift once you have enough pages, enough runtime, or enough instability that you want the heavy work isolated.</p>
+<p>You don’t need to overengineer it on day one.</p>
+<p>If the scrape is important enough, make it composable/modular.</p>
+<h1 id="12-log-enough-to-know-what-failed-without-reading-your-code-like-a-detective">12. Log enough to know what failed without reading your code like a detective</h1>
+<p>A scraper without decent logging is miserable to operate.</p>
+<p>At minimum, log:</p>
+<ul><li>current URL or page</li><li>current index</li><li>page count or progress count</li><li>reason for skipping</li><li>retry attempts</li><li>failure class</li><li>output location</li></ul>
+<p>The scripts I trust most tend to have obvious progress bars, page-by-page logs, and explicit save points. That is not cosmetic. It is operational visibility. When something goes wrong halfway through page 143 of 400, you want the answer in the logs, not in your imagination.</p>
+<p>It’s also nice to have an ETA for when the script will finish.</p>
+<h1 id="13-treat-legality-and-ethics-as-design-constraints-not-footnotes">13. Treat legality and ethics as design constraints, not footnotes</h1>
+<p>This is where a lot of scraping advice gets stupid.</p>
+<p>A robust scraper is not just a technically successful one. It is also one that respects the boundaries of the surface you are working with.</p>
+<p>That means:</p>
+<ul><li>prefer public data</li><li>do not bypass authentication or technical controls</li><li>do not collect personal data casually</li><li>do not pretend rate limits are optional</li><li>do not build around evasion as your main strategy</li><li>check the site’s terms and the legal context that applies to you</li></ul>
+<p>That is not me being sanctimonious. It’s just practical. If your script depends on breaking access controls or constantly disguising itself, it is not robust. It is brittle in a different direction.</p>
+<p>The patterns I trust most are the ones that still look reasonable when someone asks, “What exactly does this script do?”</p>
+<h1 id="14-build-the-script-around-a-simple-pipeline">14. Build the script around a simple pipeline</h1>
+<p>If you want a reliable default architecture, this is the one I recommend:</p>
+<h2 id="phase-1-configuration">Phase 1: configuration</h2>
+<p>Store your base URL, endpoint strategy, concurrency, delay ranges, max pages, and output path in one place.</p>
+<h2 id="phase-2-discovery">Phase 2: discovery</h2>
+<p>Find the inventory of targets: handles, IDs, URLs, page numbers, or result pages.</p>
+<h2 id="phase-3-fetch">Phase 3: fetch</h2>
+<p>Request each target with polite delay, bounded concurrency, retries, and backoff.</p>
+<h2 id="phase-4-extract">Phase 4: extract</h2>
+<p>Pull out the raw fields using stable selectors or structured JSON parsing.</p>
+<h2 id="phase-5-normalize">Phase 5: normalize</h2>
+<p>Clean text, parse numbers, normalize URLs, dedupe arrays, standardize tags.</p>
+<h2 id="phase-6-infer">Phase 6: infer</h2>
+<p>Add derived fields only after the raw extraction is stable.</p>
+<h2 id="phase-7-persist">Phase 7: persist</h2>
+<p>Write incrementally. Prefer append-friendly formats for long runs.</p>
+<h2 id="phase-8-resume">Phase 8: resume</h2>
+<p>Save checkpoints and make reruns idempotent where possible.</p>
+<p>That architecture works in a local script, a container, or a serverless workflow because it does not depend on magic. It depends on separation of concerns.</p>
+<h1 id="15-a-practical-skeleton">15. A practical skeleton</h1>
+<p>This is the shape I would start from for almost any scraper:</p>
+<pre><code>typeRecordOut= {
+  source: {
+    url:string;
+    page?:number;
+    id?:string|number;
+  };
+  data:Record&lt;string,unknown&gt;;
+  raw?:Record&lt;string,unknown&gt;;
+};
+
+asyncfunctiondiscoverTargets():Promise&lt;string[]&gt; {
+// Return URLs, handles, page endpoints, etc.
+return [];
+}
+
+asyncfunctionfetchWithRetry(url:string):Promise&lt;string&gt; {
+// Add jitter, retry, backoff, and 429 handling
+return&quot;&quot;;
+}
+
+functionextract(htmlOrJson:string):Record&lt;string,unknown&gt; {
+// Parse structured source or HTML
+return {};
+}
+
+functionnormalize(data:Record&lt;string,unknown&gt;):Record&lt;string,unknown&gt; {
+// Trim, coerce, decode, dedupe, standardize
+returndata;
+}
+
+asyncfunctionmain() {
+consttargets=awaitdiscoverTargets();
+
+for (consttargetoftargets) {
+try {
+constbody=awaitfetchWithRetry(target);
+constextracted=extract(body);
+constcleaned=normalize(extracted);
+
+constrow:RecordOut= {
+        source: { url:target },
+        data:cleaned,
+        raw:extracted,
+      };
+
+// append row to JSONL or checkpointed output
+    }catch (err) {
+// log and continue
+    }
+  }
+}</code></pre>
+<p>That is obviously incomplete, but the point is the shape.</p>
+<p>The shape matters more than the framework.</p>
+<h1 id="16-what-actually-makes-a-scraper-portable">16. What actually makes a scraper “portable”</h1>
+<p>Not “runnable anywhere.” Portable.</p>
+<p>Those are different.</p>
+<p>A portable scraper tends to have these traits:</p>
+<ul><li>no hidden local assumptions</li><li>environment variables for secrets and config</li><li>clear dependency list</li><li>deterministic output location</li><li>graceful shutdown</li><li>no GUI requirement unless absolutely necessary</li><li>bounded memory use</li><li>append-friendly persistence</li><li>ability to resume after interruption</li></ul>
+<p>This is another reason I like simple Node or TypeScript scripts with straightforward helpers. They run locally, in a VM, in a container, or behind a job runner without much drama if the design is clean.</p>
+<p>Portability is mostly about avoiding accidental coupling.</p>
+<h1 id="17-the-real-trick">17. The real trick</h1>
+<p>There is no secret trick.</p>
+<p>The real trick is resisting the temptation to write a clever scraper when a boring one will survive longer.</p>
+<p>That means:</p>
+<ul><li>inspect first</li><li>choose the least fragile source</li><li>separate discovery from extraction</li><li>normalize early</li><li>preserve provenance</li><li>checkpoint aggressively</li><li>slow down when the site tells you to</li><li>only use a browser when the page forces your hand</li></ul>
+<p>That is the pattern I have used over and over because it keeps paying off.</p>
+<p>A scraper does not need to be flashy. It needs to be understandable, restartable, and honest about the surface it is scraping.</p>
+<p>That is what actually scales.</p>
+<h1 id="the-prompt">The prompt</h1>
+<pre><code>I want you to generate a production-grade scraping script for the target site I give you.
+
+Your job is not to produce a toy example. Produce a complete, durable, restartable scraper built with tried-and-true patterns used in real scraping workflows.
+
+Target site:
+[PASTE URL OR SITE DESCRIPTION HERE]
+
+Goal:
+[DESCRIBE EXACTLY WHAT DATA TO EXTRACT]
+
+Environment:
+- Language: [TypeScript / JavaScript / Python]
+- Runtime: [Node / Bun / Deno / Python]
+- Preferred libraries: [axios / fetch / cheerio / playwright / puppeteer / bs4 / lxml / etc.]
+- Output format: [JSON / JSONL / CSV / DB insert / parquet]
+- Run environment: [local / Docker / VM / serverless / CI]
+- Authentication: [none / cookie / API key / session / unknown]
+- Allowed scope: public pages only unless I explicitly say otherwise
+- Do not include any credential theft, login bypass, CAPTCHA bypass, fingerprint spoofing, or access-control evasion
+
+What I want you to do:
+
+1. First, reason about the site architecture before writing code.
+   - Identify the least fragile source of truth.
+   - Prefer public JSON/XHR/API endpoints over HTML scraping where possible.
+   - Separate breadth sources from depth sources:
+     - breadth = listing pages, feeds, search results, sitemaps, product indexes, paginated directories
+     - depth = detail pages, profile pages, attachments, per-record endpoints
+   - If a hybrid approach is best, use it.
+
+2. Decide what belongs in:
+   - a seed/discovery layer
+   - a scraping/extraction layer
+   - a processing/normalization layer
+   Keep those concerns separate unless the job is small enough that combining them is clearly better.
+
+3. Generate a scraper that includes everything it may realistically need:
+   - config section
+   - CLI arguments or environment variables
+   - input validation
+   - URL normalization
+   - polite rate limiting
+   - bounded concurrency
+   - randomized jitter
+   - retries with exponential backoff
+   - special handling for 429 and transient 5xx errors
+   - timeout handling
+   - pagination support
+   - deduplication
+   - stable progress logging
+   - resumability/checkpointing
+   - graceful shutdown on SIGINT/SIGTERM
+   - incremental writes
+   - structured output
+   - raw source preservation where useful
+   - normalization helpers
+   - optional enrichment/inference helpers
+   - clear error handling and skip/recover behavior
+
+4. Design the output shape before the extraction logic.
+   Include:
+   - source metadata
+   - canonical extracted fields
+   - raw extracted fragments where useful
+   - normalized fields
+   - inferred/enriched fields separated from raw extracted fields
+   - timestamps and provenance where appropriate
+
+5. Be explicit about tool choice.
+   - If plain HTTP + HTML parser is enough, use that.
+   - Only use a headless browser if the site genuinely requires rendering, interaction, JS pagination, or authenticated flows I explicitly authorize.
+   - Explain why that choice was made.
+
+6. Write the code as if it will actually be run by a competent engineer.
+   That means:
+   - complete imports
+   - real helper functions
+   - no pseudocode unless unavoidable
+   - comments only where they add value
+   - minimal hidden assumptions
+   - consistent naming
+   - production-sane defaults
+
+7. Include these implementation patterns:
+   - discovery and extraction should be separable
+   - selectors should anchor to stable labels, repeated blocks, tables, URLs, or semantic structure rather than fragile styling
+   - normalization should happen during extraction, not as an afterthought
+   - inferred fields should be kept separate from raw extracted fields
+   - JSONL should be preferred for long-running jobs unless another format is clearly better
+   - checkpoint files should allow restart after interruption
+   - write incrementally instead of buffering everything in memory
+   - logs should make failures diagnosable without opening the code
+
+8. At the top of the answer, give me:
+   - the recommended architecture for this specific site
+   - why you chose it
+   - whether this should be one script or split into seed + scrape + process scripts
+   - the likely brittle points
+   - what I should inspect in DevTools first
+
+9. Then output:
+   A. a concise explanation of the plan
+   B. the full script
+   C. any companion seed or normalization scripts if needed
+   D. the expected directory structure
+   E. install commands
+   F. run commands
+   G. example output
+   H. notes on how to adapt the scraper if the site changes
+
+10. Constraints:
+   - Do not assume the site is stable
+   - Do not assume the HTML is clean
+   - Do not assume pagination is obvious
+   - Do not overfit to one page if the site likely has multiple templates
+   - Do not silently drop partial failures
+   - Do not make the script “clever” at the expense of maintainability
+   - Do not include anything that bypasses auth, CAPTCHAs, rate limits, or technical protections
+
+11. Quality bar:
+   I want the scraper to reflect the following philosophy:
+   - prefer structured sources first
+   - use hybrid breadth/depth scraping when appropriate
+   - shape the data early
+   - normalize on the way in
+   - preserve provenance
+   - make long runs restartable
+   - be polite with concurrency and retries
+   - use browsers only when the site earns it
+
+If information about the site is missing, make the most reasonable assumptions, state them clearly, and still produce the best complete implementation you can.</code></pre>
+                </article>
+
+                <p class="blog-kicker">
+                    <a href="/">flawnson.com</a> / <a href="/blog/">blog</a> / <span>Websites Were Made to Be Scraped</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/assets/js/blog.js"></script>
+</body>
+</html>

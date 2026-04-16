@@ -20,13 +20,18 @@ AUTHOR_URL = f"{SITE_URL}/#person"
 PUBLISHER_NAME = "Flawnson"
 PUBLISHER_LOGO_URL = f"{SITE_URL}/assets/images/Favicon.png"
 DEFAULT_BLOG_IMAGE = f"{SITE_URL}/assets/images/profile%202.jpg"
+BLOG_IMAGE_DIR_CANDIDATES = [
+    ("blog", ROOT / "assets" / "images" / "blog"),
+    ("blogs", ROOT / "assets" / "images" / "blogs"),
+]
 
 POST_TEMPLATE = (TEMPLATES_DIR / "blog-post.html").read_text(encoding="utf-8")
 INDEX_TEMPLATE = (TEMPLATES_DIR / "blog-index.html").read_text(encoding="utf-8")
 
 FRONTMATTER_RE = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*\r?\n(.*)$", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
-LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+IMAGE_RE = re.compile(r'!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)')
+LINK_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)]+)\)")
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
 TOC_HEADING_RE = re.compile(r"<h([1-3])>(.*?)</h\1>")
@@ -86,12 +91,145 @@ def parse_frontmatter(raw_text: str) -> tuple[dict[str, Any], str]:
     return data, body.strip() + "\n"
 
 
+def normalize_image_src(src: str) -> str:
+    cleaned = src.strip()
+    if len(cleaned) >= 2 and (
+        (cleaned.startswith('"') and cleaned.endswith('"'))
+        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    ):
+        cleaned = cleaned[1:-1].strip()
+    if not cleaned:
+        return cleaned
+
+    lowered = cleaned.lower()
+    if lowered.startswith(("http://", "https://", "data:", "blob:")):
+        return cleaned
+
+    if cleaned.startswith(("assets/", "blog/", "content/", "data/")):
+        return f"/{cleaned.lstrip('/')}"
+
+    if cleaned.startswith(("/", "./", "../")):
+        return cleaned
+
+    for web_dir_name, fs_dir in BLOG_IMAGE_DIR_CANDIDATES:
+        if (fs_dir / cleaned).exists():
+            return f"/assets/images/{web_dir_name}/{cleaned}"
+
+    for web_dir_name, fs_dir in BLOG_IMAGE_DIR_CANDIDATES:
+        if fs_dir.exists():
+            return f"/assets/images/{web_dir_name}/{cleaned}"
+
+    return f"/assets/images/blog/{cleaned}"
+
+
+def normalize_css_dimension(value: str) -> str | None:
+    candidate = value.strip().lower()
+    if not candidate:
+        return None
+    if re.match(r"^\d+$", candidate):
+        return f"{candidate}px"
+    if re.match(r"^\d+(\.\d+)?(px|%|rem|em|vw|vh|vmin|vmax)$", candidate):
+        return candidate
+    if candidate == "auto":
+        return candidate
+    return None
+
+
+def parse_image_options(raw_alt: str) -> tuple[str, dict[str, str]]:
+    parts = [part.strip() for part in raw_alt.split("|")]
+    alt_text = parts[0] if parts else ""
+    options: dict[str, str] = {}
+
+    for token in parts[1:]:
+        if not token:
+            continue
+        if "=" in token:
+            key, value = token.split("=", 1)
+            options[key.strip().lower()] = value.strip()
+        else:
+            lower = token.lower()
+            if lower in {"left", "center", "right"}:
+                options["align"] = lower
+            elif lower in {"xs", "sm", "md", "lg", "full"}:
+                options["size"] = lower
+
+    return alt_text, options
+
+
+def render_markdown_image(raw_alt: str, raw_src: str, raw_title: str | None) -> str:
+    alt_text, options = parse_image_options(raw_alt)
+
+    classes = ["blog-image"]
+    align = options.get("align", "center")
+    if align in {"left", "center", "right"}:
+        classes.append(f"blog-image-align-{align}")
+
+    size = options.get("size")
+    if size in {"xs", "sm", "md", "lg", "full"}:
+        classes.append(f"blog-image-size-{size}")
+
+    style_parts: list[str] = []
+    width = normalize_css_dimension(options.get("w", options.get("width", "")))
+    height = normalize_css_dimension(options.get("h", options.get("height", "")))
+    max_width = normalize_css_dimension(options.get("max", options.get("maxw", options.get("max-width", ""))))
+
+    if width:
+        style_parts.append(f"width: {width}")
+    if height:
+        style_parts.append(f"height: {height}")
+    if max_width:
+        style_parts.append(f"max-width: {max_width}")
+
+    attrs = [
+        f'src="{html.escape(normalize_image_src(raw_src), quote=True)}"',
+        f'alt="{html.escape(alt_text, quote=True)}"',
+        f'class="{" ".join(classes)}"',
+        'loading="lazy"',
+        'decoding="async"',
+    ]
+
+    if raw_title:
+        attrs.append(f'title="{html.escape(raw_title, quote=True)}"')
+    if style_parts:
+        attrs.append(f'style="{"; ".join(style_parts)}"')
+
+    return f"<img {' '.join(attrs)}>"
+
+
 def apply_inline_formatting(text: str) -> str:
-    escaped = html.escape(text)
-    escaped = LINK_RE.sub(r'<a href="\2">\1</a>', escaped)
-    escaped = INLINE_CODE_RE.sub(r"<code>\1</code>", escaped)
+    code_placeholders: dict[str, str] = {}
+
+    def code_replacer(match: re.Match[str]) -> str:
+        token = f"@@CODE{len(code_placeholders)}@@"
+        code_placeholders[token] = f"<code>{html.escape(match.group(1))}</code>"
+        return token
+
+    text_with_code_tokens = INLINE_CODE_RE.sub(code_replacer, text)
+
+    image_placeholders: dict[str, str] = {}
+
+    def image_replacer(match: re.Match[str]) -> str:
+        token = f"@@IMG{len(image_placeholders)}@@"
+        image_placeholders[token] = render_markdown_image(match.group(1), match.group(2), match.group(3))
+        return token
+
+    text_with_image_tokens = IMAGE_RE.sub(image_replacer, text_with_code_tokens)
+    escaped = html.escape(text_with_image_tokens)
+
+    def link_replacer(match: re.Match[str]) -> str:
+        label = match.group(1)
+        href = match.group(2)
+        return f'<a href="{html.escape(href, quote=True)}">{label}</a>'
+
+    escaped = LINK_RE.sub(link_replacer, escaped)
     escaped = BOLD_RE.sub(r"<strong>\1</strong>", escaped)
     escaped = ITALIC_RE.sub(r"<em>\1</em>", escaped)
+
+    for token, image_html in image_placeholders.items():
+        escaped = escaped.replace(token, image_html)
+    for token, code_html in code_placeholders.items():
+        escaped = escaped.replace(token, code_html)
+
     return escaped
 
 
@@ -106,7 +244,7 @@ def render_aside(lines: list[str]) -> str:
 
     inner_markdown = "\n".join(inner_lines).strip()
     inner_html = markdown_to_html(inner_markdown)
-    return f"<aside>\n{inner_html}\n</aside>"
+    return f'<aside class="blog-aside">\n{inner_html}\n</aside>'
 
 
 def markdown_to_html(markdown: str) -> str:
