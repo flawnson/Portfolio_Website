@@ -16,7 +16,7 @@ if (in_array($origin, $allowedOrigins, true)) {
 
 header("Vary: Origin");
 header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, X-Admin-Token");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
@@ -136,6 +136,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     respond(201, [
         "ok" => true,
         "id" => (int)$pdo->lastInsertId(),
+    ]);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "PUT" || $_SERVER["REQUEST_METHOD"] === "PATCH") {
+    $providedToken = $_SERVER["HTTP_X_ADMIN_TOKEN"] ?? "";
+    if (!hash_equals($adminToken, $providedToken)) {
+        respond(401, ["error" => "unauthorized"]);
+    }
+
+    $id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
+    if ($id <= 0) {
+        respond(422, ["error" => "invalid_id"]);
+    }
+
+    $rawBody = file_get_contents("php://input");
+    $json = json_decode($rawBody ?: "", true);
+
+    if (!is_array($json)) {
+        respond(400, ["error" => "invalid_json"]);
+    }
+
+    $body = trim((string)($json["body"] ?? ""));
+    if ($body === "") {
+        respond(422, ["error" => "body_required"]);
+    }
+
+    if (mb_strlen($body) > 1000) {
+        respond(422, ["error" => "body_too_long"]);
+    }
+
+    $stmt = $pdo->prepare("
+        UPDATE micro_posts
+        SET body = :body
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ":body" => $body,
+        ":id" => $id,
+    ]);
+
+    respond(200, [
+        "ok" => true,
+        "updated" => $stmt->rowCount() > 0,
     ]);
 }
 
