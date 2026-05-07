@@ -35,6 +35,229 @@ I manually write and upload a small php config script that holds my config info 
 ### API
 I use a custom php CRUD API to post to my website.
 All endpoints are in the micro-posts.php file.
+
+Optional social syndication is also handled from `micro-posts.php`. The database insert happens first; Gemini routing and external platform posting happen afterward and only log failures, so Flitter remains the source of truth even if Gemini, X, Bluesky, or Threads fail.
+
+### Social platform configuration
+All secrets live in `/home/flawhvna/private/microblog-config.php`, never in this repository. The social credentials must all be account-scoped credentials for my own personal accounts. If a social platform fails, the Flitter database post should still be considered successful.
+
+The full optional config shape is:
+```php
+$socialSyndicationEnabled = true;
+
+// Gemini routing
+$geminiApiKey = '...';
+$geminiModel = 'gemini-2.5-flash';
+
+// X, posting as my personal X account
+$xApiKey = '...';
+$xApiSecret = '...';
+$xAccessToken = '...';
+$xAccessTokenSecret = '...';
+
+// Bluesky, posting as my personal Bluesky account
+$blueskyHandle = 'flawnson.bsky.social';
+$blueskyAppPassword = '...';
+$blueskyService = 'https://bsky.social';
+
+// Threads, posting as my personal Threads account
+$threadsUserId = '...';
+$threadsAccessToken = '...';
+```
+
+Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Flitter posting still works, then turn it on after the platform credentials are configured.
+
+#### Gemini routing
+Gemini decides which single platform receives the post. The PHP code calls the Gemini REST API with an explicit API key and expects exactly one of `x`, `bluesky`, or `threads`.
+
+1. Go to Google AI Studio.
+2. Create or open the project for this app.
+3. Create a Gemini API key. The Google project name and project number are not needed by this PHP code.
+4. Add the key:
+
+```php
+$geminiApiKey = 'AIza...';
+$geminiModel = 'gemini-2.5-flash';
+```
+
+#### X
+The X integration uses OAuth 1.0a user-context credentials and posts to `POST https://api.x.com/2/tweets`. Do not use the app-only bearer token for this implementation.
+
+1. Open the X Developer Console for the app.
+2. Make sure the app has `Read and write` permissions.
+3. In `Keys & Tokens`, use the `OAuth 1.0 Keys` section.
+4. Copy the `Consumer Key` into `$xApiKey`.
+5. Copy the `Consumer Secret` / `Consumer Key Secret` into `$xApiSecret`.
+6. Generate an `Access Token` for my personal account, such as `For @FlawnsonTong`.
+7. Copy the generated `Access Token` into `$xAccessToken`.
+8. Copy the generated `Access Token Secret` into `$xAccessTokenSecret`.
+
+```php
+$xApiKey = 'consumer_key_from_x';
+$xApiSecret = 'consumer_secret_from_x';
+$xAccessToken = 'access_token_for_my_personal_x_account';
+$xAccessTokenSecret = 'access_token_secret_for_my_personal_x_account';
+```
+
+The access token must say it is for the account I want to post from. That is what locks posting to my personal X account.
+
+#### Bluesky
+The Bluesky integration logs in with my handle and an app password, then creates an `app.bsky.feed.post` record through the AT Protocol API.
+
+1. In Bluesky, open `Settings -> App Passwords`.
+2. Create an app password named something like `Flitter`.
+3. Use my Bluesky handle without the leading `@`.
+4. Keep the service as `https://bsky.social` unless the account uses a different personal data server.
+
+```php
+$blueskyHandle = 'flawnson.bsky.social';
+$blueskyAppPassword = 'xxxx-xxxx-xxxx-xxxx';
+$blueskyService = 'https://bsky.social';
+```
+
+If the visible Bluesky profile handle is `@flawnson.bsky.social`, the config value is `flawnson.bsky.social`. Only use `flawnson.com` if the Bluesky app itself shows the profile as `@flawnson.com`.
+
+#### Threads
+The Threads integration needs a numeric Threads user ID and a long-lived Threads user access token. The app ID and app secret are used during setup to generate the token, but the runtime PHP config only needs:
+
+```php
+$threadsUserId = '123456789';
+$threadsAccessToken = 'long_lived_threads_access_token';
+```
+
+Threads setup is strict about testers and redirect URLs:
+
+1. In Meta Developer Console, open the app.
+2. Go to `Use cases -> Access the Threads API -> Customize`.
+3. Confirm the `Threads app ID` and reveal the `Threads app secret`; keep both private during setup.
+4. Add this exact URL to `Redirect Callback URLs` / `Valid OAuth Redirect URIs`:
+
+```text
+https://flawnson.com/
+```
+
+5. Add temporary callback URLs if Meta requires them:
+
+```text
+Uninstall Callback URL: https://flawnson.com/
+Delete Callback URL: https://flawnson.com/
+```
+
+6. Make sure the Threads account is public.
+7. Add the Threads account as a `Threads Tester`.
+8. Accept the pending tester invite from the Threads account. In Threads, this is under profile settings, usually `Website permissions`.
+9. Request only these scopes:
+
+```text
+threads_basic
+threads_content_publish
+```
+
+Do not request `threads_delete` for this integration.
+
+If the `User Token Generator` appears and lists the Threads account, use it to generate a long-lived token directly. Then get the user ID:
+
+```bash
+curl "https://graph.threads.net/v1.0/me?fields=id,username&access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
+```
+
+If using the manual OAuth flow, open this URL with the real Threads app ID:
+
+```text
+https://threads.net/oauth/authorize?client_id=THREADS_APP_ID&redirect_uri=https%3A%2F%2Fflawnson.com%2F&scope=threads_basic,threads_content_publish&response_type=code
+```
+
+After approval, the browser redirects to a URL like:
+
+```text
+https://flawnson.com/?code=AQ...
+```
+
+Copy only the `code` value. Do not include `code=` or the trailing `#_` fragment. Exchange it immediately for a short-lived token:
+
+```bash
+curl -X POST "https://graph.threads.net/oauth/access_token" \
+  --data-urlencode "client_id=THREADS_APP_ID" \
+  --data-urlencode "client_secret=THREADS_APP_SECRET" \
+  --data-urlencode "grant_type=authorization_code" \
+  --data-urlencode "redirect_uri=https://flawnson.com/" \
+  --data-urlencode "code=FRESH_CODE_WITHOUT_HASH_FRAGMENT"
+```
+
+The response contains:
+
+```json
+{
+  "access_token": "SHORT_LIVED_ACCESS_TOKEN",
+  "user_id": "123456789"
+}
+```
+
+Save the `user_id`, then exchange the short-lived token for a long-lived token:
+
+```bash
+curl -G "https://graph.threads.net/access_token" \
+  --data-urlencode "grant_type=th_exchange_token" \
+  --data-urlencode "client_secret=THREADS_APP_SECRET" \
+  --data-urlencode "access_token=SHORT_LIVED_ACCESS_TOKEN"
+```
+
+The response contains the long-lived token:
+
+```json
+{
+  "access_token": "LONG_LIVED_THREADS_ACCESS_TOKEN",
+  "token_type": "bearer",
+  "expires_in": 5184000
+}
+```
+
+Put the numeric `user_id` from the first response and the long-lived token from the second response into the private PHP config:
+
+```php
+$threadsUserId = '123456789';
+$threadsAccessToken = 'LONG_LIVED_THREADS_ACCESS_TOKEN';
+```
+
+Verify the final token:
+
+```bash
+curl "https://graph.threads.net/v1.0/me?fields=id,username&access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
+```
+
+Test a direct text post before testing through Flitter:
+
+```bash
+curl -X POST "https://graph.threads.net/v1.0/THREADS_USER_ID/threads" \
+  -d "media_type=TEXT" \
+  -d "text=Testing Flitter Threads API setup." \
+  -d "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
+```
+
+That returns a creation ID. Publish it:
+
+```bash
+curl -X POST "https://graph.threads.net/v1.0/THREADS_USER_ID/threads_publish" \
+  -d "creation_id=CREATION_ID" \
+  -d "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
+```
+
+Threads long-lived tokens expire. Refresh the token before it expires and replace `$threadsAccessToken`:
+
+```bash
+curl -G "https://graph.threads.net/refresh_access_token" \
+  --data-urlencode "grant_type=th_refresh_token" \
+  --data-urlencode "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
+```
+
+#### References
+- Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key
+- X OAuth 1.0a: https://docs.x.com/fundamentals/authentication/oauth-1-0a/overview
+- X create post endpoint: https://docs.x.com/x-api/posts/creation-of-a-post
+- Bluesky creating a post: https://docs.bsky.app/docs/tutorials/creating-a-post
+- Threads long-lived tokens: https://developers.facebook.com/docs/threads/get-started/long-lived-tokens/
+- Threads API Postman collection: https://www.postman.com/meta/threads
+
 ### App
 I wrote a small iOS app with SwiftUI to post to my website from anywhere.
 You can find it in the [Flitter](https://github.com/flawnson/flitter) repo on my GitHub.

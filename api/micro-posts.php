@@ -24,12 +24,376 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     exit;
 }
 
+ignore_user_abort(true);
+
 require '/home/flawhvna/private/microblog-config.php';
 
 function respond(int $status, array $data): void {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function config_string(string $name, string $default = ''): string {
+    $value = $GLOBALS[$name] ?? $default;
+    return is_string($value) ? trim($value) : $default;
+}
+
+function http_json_request(string $url, array $headers, array $payload, int $timeoutSeconds = 6): array {
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl_unavailable'];
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => $timeoutSeconds,
+    ]);
+
+    $body = curl_exec($ch);
+    $error = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($body) ? json_decode($body, true) : null;
+
+    return [
+        'ok' => $error === '' && $status >= 200 && $status < 300,
+        'status' => $status,
+        'json' => is_array($decoded) ? $decoded : null,
+        'body' => is_string($body) ? $body : '',
+        'error' => $error,
+    ];
+}
+
+function http_form_request(string $url, array $fields, int $timeoutSeconds = 6): array {
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl_unavailable'];
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => http_build_query($fields),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => $timeoutSeconds,
+    ]);
+
+    $body = curl_exec($ch);
+    $error = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($body) ? json_decode($body, true) : null;
+
+    return [
+        'ok' => $error === '' && $status >= 200 && $status < 300,
+        'status' => $status,
+        'json' => is_array($decoded) ? $decoded : null,
+        'body' => is_string($body) ? $body : '',
+        'error' => $error,
+    ];
+}
+
+function route_micro_post(string $body): ?string {
+    $apiKey = config_string('geminiApiKey');
+    if ($apiKey === '') {
+        return null;
+    }
+
+    $model = rawurlencode(config_string('geminiModel', 'gemini-2.5-flash'));
+    $prompt = <<<'PROMPT'
+You are a routing model. Your ONLY job is to decide which social platform a text-only post should be published to.
+
+You must output EXACTLY ONE of these three tokens and NOTHING else:
+
+x
+bluesky
+threads
+
+No punctuation.
+No explanation.
+No quotes.
+No reasoning.
+No extra words.
+
+Platform definitions:
+
+x
+
+* Best for:
+
+  * authority
+  * startups
+  * rare disease advocacy
+  * technical ideas
+  * AI
+  * systems thinking
+  * ambitious opinions
+  * concise insight-dense takes
+  * intellectual arguments
+  * founder energy
+  * professional reputation
+* Tone:
+
+  * sharp
+  * high signal
+  * direct
+  * insightful
+  * opinionated
+* Route here if the post sounds:
+
+  * strategic
+  * analytical
+  * technically informed
+  * mission-driven
+  * professionally valuable
+
+bluesky
+
+* Best for:
+
+  * creativity
+  * music
+  * books
+  * philosophy
+  * internet culture
+  * artistic observations
+  * thoughtful reflection
+  * experimental ideas
+  * poetic or introspective writing
+  * weird or niche observations
+* Tone:
+
+  * reflective
+  * curious
+  * artistic
+  * intellectual but soft
+* Route here if the post feels:
+
+  * exploratory
+  * contemplative
+  * culturally aware
+  * emotionally nuanced
+  * creatively expressive
+
+threads
+
+* Best for:
+
+  * lifestyle
+  * fitness
+  * food
+  * cats
+  * casual daily life
+  * relatable humor
+  * warm personal moments
+  * approachable social content
+  * light inspiration
+* Tone:
+
+  * casual
+  * warm
+  * friendly
+  * accessible
+  * emotionally immediate
+* Route here if the post feels:
+
+  * conversational
+  * cozy
+  * aesthetic
+  * low-stakes
+  * socially relatable
+
+Priority rules:
+
+* If a post is about startups, rare disease work, AI, technical systems, or ambitious ideas -> prefer x
+* If a post is artistic, philosophical, reflective, or culturally experimental -> prefer bluesky
+* If a post is about everyday life, food, fitness, pets, or casual relatable experiences -> prefer threads
+
+Tie-breaking rules:
+
+* Serious/professional -> x
+* Thoughtful/artistic -> bluesky
+* Casual/social -> threads
+
+Input post:
+{{POST}}
+
+Return only:
+x
+or
+bluesky
+or
+threads
+PROMPT;
+
+    $response = http_json_request(
+        "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent",
+        ['x-goog-api-key: ' . $apiKey],
+        [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => str_replace('{{POST}}', $body, $prompt)],
+                    ],
+                ],
+            ],
+            'generationConfig' => [
+                'temperature' => 0,
+                'maxOutputTokens' => 5,
+            ],
+        ]
+    );
+
+    $text = '';
+    if (isset($response['json']['candidates'][0]['content']['parts'][0]['text'])) {
+        $text = strtolower(trim((string)$response['json']['candidates'][0]['content']['parts'][0]['text']));
+    }
+
+    return in_array($text, ['x', 'bluesky', 'threads'], true) ? $text : null;
+}
+
+function publish_to_bluesky(string $body): array {
+    $handle = config_string('blueskyHandle');
+    $password = config_string('blueskyAppPassword');
+    $service = rtrim(config_string('blueskyService', 'https://bsky.social'), '/');
+
+    if ($handle === '' || $password === '') {
+        return ['ok' => false, 'error' => 'bluesky_not_configured'];
+    }
+
+    $session = http_json_request($service . '/xrpc/com.atproto.server.createSession', [], [
+        'identifier' => $handle,
+        'password' => $password,
+    ]);
+
+    $accessJwt = (string)($session['json']['accessJwt'] ?? '');
+    $repo = (string)($session['json']['did'] ?? $handle);
+    if (!$session['ok'] || $accessJwt === '') {
+        return ['ok' => false, 'error' => 'bluesky_session_failed', 'status' => $session['status'] ?? 0];
+    }
+
+    return http_json_request(
+        $service . '/xrpc/com.atproto.repo.createRecord',
+        ['Authorization: Bearer ' . $accessJwt],
+        [
+            'repo' => $repo,
+            'collection' => 'app.bsky.feed.post',
+            'record' => [
+                '$type' => 'app.bsky.feed.post',
+                'text' => $body,
+                'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            ],
+        ]
+    );
+}
+
+function oauth1_header(string $method, string $url, array $bodyParams = []): string {
+    $consumerKey = config_string('xApiKey');
+    $consumerSecret = config_string('xApiSecret');
+    $token = config_string('xAccessToken');
+    $tokenSecret = config_string('xAccessTokenSecret');
+
+    $oauth = [
+        'oauth_consumer_key' => $consumerKey,
+        'oauth_nonce' => bin2hex(random_bytes(16)),
+        'oauth_signature_method' => 'HMAC-SHA1',
+        'oauth_timestamp' => (string)time(),
+        'oauth_token' => $token,
+        'oauth_version' => '1.0',
+    ];
+
+    $signatureParams = array_merge($oauth, $bodyParams);
+    ksort($signatureParams);
+
+    $encodedPairs = [];
+    foreach ($signatureParams as $key => $value) {
+        $encodedPairs[] = rawurlencode((string)$key) . '=' . rawurlencode((string)$value);
+    }
+
+    $baseString = strtoupper($method) . '&' . rawurlencode($url) . '&' . rawurlencode(implode('&', $encodedPairs));
+    $signingKey = rawurlencode($consumerSecret) . '&' . rawurlencode($tokenSecret);
+    $oauth['oauth_signature'] = base64_encode(hash_hmac('sha1', $baseString, $signingKey, true));
+
+    $headerPairs = [];
+    foreach ($oauth as $key => $value) {
+        $headerPairs[] = rawurlencode($key) . '="' . rawurlencode((string)$value) . '"';
+    }
+
+    return 'Authorization: OAuth ' . implode(', ', $headerPairs);
+}
+
+function publish_to_x(string $body): array {
+    if (
+        config_string('xApiKey') === '' ||
+        config_string('xApiSecret') === '' ||
+        config_string('xAccessToken') === '' ||
+        config_string('xAccessTokenSecret') === ''
+    ) {
+        return ['ok' => false, 'error' => 'x_not_configured'];
+    }
+
+    $url = 'https://api.x.com/2/tweets';
+    return http_json_request($url, [oauth1_header('POST', $url)], ['text' => $body]);
+}
+
+function publish_to_threads(string $body): array {
+    $userId = config_string('threadsUserId');
+    $accessToken = config_string('threadsAccessToken');
+
+    if ($userId === '' || $accessToken === '') {
+        return ['ok' => false, 'error' => 'threads_not_configured'];
+    }
+
+    $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
+    $container = http_form_request($baseUrl . '/threads', [
+        'media_type' => 'TEXT',
+        'text' => $body,
+        'access_token' => $accessToken,
+    ]);
+
+    $creationId = (string)($container['json']['id'] ?? '');
+    if (!$container['ok'] || $creationId === '') {
+        return ['ok' => false, 'error' => 'threads_container_failed', 'status' => $container['status'] ?? 0];
+    }
+
+    return http_form_request($baseUrl . '/threads_publish', [
+        'creation_id' => $creationId,
+        'access_token' => $accessToken,
+    ]);
+}
+
+function syndicate_micro_post(string $body, int $postId): void {
+    if (!filter_var($GLOBALS['socialSyndicationEnabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        return;
+    }
+
+    $platform = route_micro_post($body);
+    if ($platform === null) {
+        error_log("Flitter syndication skipped for post {$postId}: routing_failed");
+        return;
+    }
+
+    if ($platform === 'x') {
+        $result = publish_to_x($body);
+    } elseif ($platform === 'bluesky') {
+        $result = publish_to_bluesky($body);
+    } else {
+        $result = publish_to_threads($body);
+    }
+
+    if (!($result['ok'] ?? false)) {
+        $status = (int)($result['status'] ?? 0);
+        $error = (string)($result['error'] ?? 'unknown_error');
+        error_log("Flitter syndication failed for post {$postId} to {$platform}: {$status} {$error}");
+    }
 }
 
 try {
@@ -133,10 +497,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         ":body" => $body,
     ]);
 
-    respond(201, [
+    $postId = (int)$pdo->lastInsertId();
+
+    http_response_code(201);
+    echo json_encode([
         "ok" => true,
-        "id" => (int)$pdo->lastInsertId(),
-    ]);
+        "id" => $postId,
+        "syndication" => filter_var($GLOBALS['socialSyndicationEnabled'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "queued" : "disabled",
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        flush();
+    }
+
+    syndicate_micro_post($body, $postId);
+    exit;
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "PUT" || $_SERVER["REQUEST_METHOD"] === "PATCH") {
