@@ -376,7 +376,13 @@ function publish_to_bluesky(string $body): array {
     $accessJwt = (string)($session['json']['accessJwt'] ?? '');
     $repo = (string)($session['json']['did'] ?? $handle);
     if (!$session['ok'] || $accessJwt === '') {
-        return ['ok' => false, 'error' => 'bluesky_session_failed', 'status' => $session['status'] ?? 0];
+        return [
+            'ok' => false,
+            'error' => 'bluesky_session_failed',
+            'status' => $session['status'] ?? 0,
+            'json' => $session['json'] ?? null,
+            'body' => $session['body'] ?? '',
+        ];
     }
 
     return http_json_request(
@@ -460,7 +466,13 @@ function publish_to_threads(string $body): array {
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
-        return ['ok' => false, 'error' => 'threads_container_failed', 'status' => $container['status'] ?? 0];
+        return [
+            'ok' => false,
+            'error' => 'threads_container_failed',
+            'status' => $container['status'] ?? 0,
+            'json' => $container['json'] ?? null,
+            'body' => $container['body'] ?? '',
+        ];
     }
 
     return http_form_request($baseUrl . '/threads_publish', [
