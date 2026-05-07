@@ -396,6 +396,14 @@ function syndicate_micro_post(string $body, int $postId): void {
     }
 }
 
+function run_syndication_safely(string $body, int $postId): void {
+    try {
+        syndicate_micro_post($body, $postId);
+    } catch (Throwable $e) {
+        error_log("Flitter syndication crashed for post {$postId}: " . $e->getMessage());
+    }
+}
+
 try {
     $pdo = new PDO(
         "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
@@ -512,7 +520,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         flush();
     }
 
-    syndicate_micro_post($body, $postId);
+    run_syndication_safely($body, $postId);
     exit;
 }
 
