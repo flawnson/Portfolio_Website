@@ -250,6 +250,29 @@ curl -G "https://graph.threads.net/refresh_access_token" \
   --data-urlencode "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
 ```
 
+#### Syndication diagnostics
+There is a protected diagnostics mode for testing the social path without creating a Flitter database post. It requires the same `X-Admin-Token` as normal posting.
+
+Check config presence and Gemini routing without publishing:
+
+```bash
+curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Token: ADMIN_TOKEN" \
+  -d '{"body":"Rare disease software has to optimize for trust before growth."}'
+```
+
+Force-test one platform without Gemini and actually publish a test post:
+
+```bash
+curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Token: ADMIN_TOKEN" \
+  -d '{"body":"Testing Flitter syndication diagnostics.","platform":"bluesky","publish":true}'
+```
+
+Valid `platform` values are `x`, `bluesky`, and `threads`. Leave `publish` as `false` or omit it when only checking config and routing.
+
 #### References
 - Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key
 - X OAuth 1.0a: https://docs.x.com/fundamentals/authentication/oauth-1-0a/overview

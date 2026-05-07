@@ -37,6 +37,10 @@ function config_string(string $name, string $default = ''): string {
     return is_string($value) ? trim($value) : $default;
 }
 
+function config_enabled(string $name): bool {
+    return filter_var($GLOBALS[$name] ?? false, FILTER_VALIDATE_BOOLEAN);
+}
+
 $configPath = '/home/flawhvna/private/microblog-config.php';
 if (!is_readable($configPath)) {
     error_log("Flitter config is not readable: {$configPath}");
@@ -55,6 +59,56 @@ foreach (['dbHost', 'dbName', 'dbUser', 'dbPass', 'adminToken'] as $requiredConf
         error_log("Flitter config is missing required value: {$requiredConfigName}");
         respond(500, ['error' => 'config_missing_required_value']);
     }
+}
+
+function require_admin_token(): void {
+    $providedToken = $_SERVER["HTTP_X_ADMIN_TOKEN"] ?? "";
+    if (!hash_equals(config_string('adminToken'), $providedToken)) {
+        respond(401, ["error" => "unauthorized"]);
+    }
+}
+
+function request_json(): array {
+    $rawBody = file_get_contents("php://input");
+    $json = json_decode($rawBody ?: "", true);
+
+    if (!is_array($json)) {
+        respond(400, ["error" => "invalid_json"]);
+    }
+
+    return $json;
+}
+
+function truncate_text(string $text, int $limit = 700): string {
+    if (mb_strlen($text) <= $limit) {
+        return $text;
+    }
+
+    return mb_substr($text, 0, $limit) . '...';
+}
+
+function http_result_summary(array $result, bool $includeSuccessJson = false): array {
+    $summary = [
+        'ok' => (bool)($result['ok'] ?? false),
+        'status' => (int)($result['status'] ?? 0),
+    ];
+
+    $error = (string)($result['error'] ?? '');
+    if ($error !== '') {
+        $summary['transport_error'] = $error;
+    }
+
+    if (isset($result['json']['error'])) {
+        $summary['api_error'] = $result['json']['error'];
+    } elseif (isset($result['json']['errors'])) {
+        $summary['api_errors'] = $result['json']['errors'];
+    } elseif ($includeSuccessJson && ($result['ok'] ?? false) && isset($result['json'])) {
+        $summary['json'] = $result['json'];
+    } elseif (!($result['ok'] ?? false) && isset($result['body']) && is_string($result['body']) && $result['body'] !== '') {
+        $summary['body'] = truncate_text($result['body']);
+    }
+
+    return $summary;
 }
 
 function http_json_request(string $url, array $headers, array $payload, int $timeoutSeconds = 6): array {
@@ -119,10 +173,10 @@ function http_form_request(string $url, array $fields, int $timeoutSeconds = 6):
     ];
 }
 
-function route_micro_post(string $body): ?string {
+function route_micro_post_result(string $body): array {
     $apiKey = config_string('geminiApiKey');
     if ($apiKey === '') {
-        return null;
+        return ['ok' => false, 'error' => 'gemini_not_configured'];
     }
 
     $model = rawurlencode(config_string('geminiModel', 'gemini-2.5-flash'));
@@ -270,12 +324,39 @@ PROMPT;
         ]
     );
 
+    if (!($response['ok'] ?? false)) {
+        return [
+            'ok' => false,
+            'error' => 'gemini_request_failed',
+            'response' => http_result_summary($response),
+        ];
+    }
+
     $text = '';
     if (isset($response['json']['candidates'][0]['content']['parts'][0]['text'])) {
         $text = strtolower(trim((string)$response['json']['candidates'][0]['content']['parts'][0]['text']));
     }
 
-    return in_array($text, ['x', 'bluesky', 'threads'], true) ? $text : null;
+    if (!in_array($text, ['x', 'bluesky', 'threads'], true)) {
+        return [
+            'ok' => false,
+            'error' => 'invalid_route',
+            'raw_output' => truncate_text($text),
+            'response' => http_result_summary($response),
+        ];
+    }
+
+    return [
+        'ok' => true,
+        'platform' => $text,
+        'raw_output' => $text,
+        'response' => http_result_summary($response),
+    ];
+}
+
+function route_micro_post(string $body): ?string {
+    $result = route_micro_post_result($body);
+    return ($result['ok'] ?? false) ? (string)$result['platform'] : null;
 }
 
 function publish_to_bluesky(string $body): array {
@@ -388,29 +469,38 @@ function publish_to_threads(string $body): array {
     ]);
 }
 
-function syndicate_micro_post(string $body, int $postId): void {
-    if (!filter_var($GLOBALS['socialSyndicationEnabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-        return;
-    }
-
-    $platform = route_micro_post($body);
-    if ($platform === null) {
-        error_log("Flitter syndication skipped for post {$postId}: routing_failed");
-        return;
-    }
-
+function publish_to_platform(string $platform, string $body): array {
     if ($platform === 'x') {
-        $result = publish_to_x($body);
-    } elseif ($platform === 'bluesky') {
-        $result = publish_to_bluesky($body);
-    } else {
-        $result = publish_to_threads($body);
+        return publish_to_x($body);
     }
+
+    if ($platform === 'bluesky') {
+        return publish_to_bluesky($body);
+    }
+
+    if ($platform === 'threads') {
+        return publish_to_threads($body);
+    }
+
+    return ['ok' => false, 'error' => 'invalid_platform'];
+}
+
+function syndicate_micro_post(string $body, int $postId): void {
+    if (!config_enabled('socialSyndicationEnabled')) {
+        return;
+    }
+
+    $route = route_micro_post_result($body);
+    if (!($route['ok'] ?? false)) {
+        error_log("Flitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
+        return;
+    }
+
+    $platform = (string)$route['platform'];
+    $result = publish_to_platform($platform, $body);
 
     if (!($result['ok'] ?? false)) {
-        $status = (int)($result['status'] ?? 0);
-        $error = (string)($result['error'] ?? 'unknown_error');
-        error_log("Flitter syndication failed for post {$postId} to {$platform}: {$status} {$error}");
+        error_log("Flitter syndication failed for post {$postId} to {$platform}: " . json_encode(http_result_summary($result), JSON_UNESCAPED_SLASHES));
     }
 }
 
@@ -420,6 +510,92 @@ function run_syndication_safely(string $body, int $postId): void {
     } catch (Throwable $e) {
         error_log("Flitter syndication crashed for post {$postId}: " . $e->getMessage());
     }
+}
+
+function social_config_status(): array {
+    return [
+        'syndication_enabled' => config_enabled('socialSyndicationEnabled'),
+        'curl_available' => function_exists('curl_init'),
+        'gemini' => [
+            'api_key_present' => config_string('geminiApiKey') !== '',
+            'model' => config_string('geminiModel', 'gemini-2.5-flash'),
+        ],
+        'x' => [
+            'api_key_present' => config_string('xApiKey') !== '',
+            'api_secret_present' => config_string('xApiSecret') !== '',
+            'access_token_present' => config_string('xAccessToken') !== '',
+            'access_token_secret_present' => config_string('xAccessTokenSecret') !== '',
+        ],
+        'bluesky' => [
+            'handle' => config_string('blueskyHandle'),
+            'app_password_present' => config_string('blueskyAppPassword') !== '',
+            'service' => config_string('blueskyService', 'https://bsky.social'),
+        ],
+        'threads' => [
+            'user_id_present' => config_string('threadsUserId') !== '',
+            'access_token_present' => config_string('threadsAccessToken') !== '',
+        ],
+    ];
+}
+
+function handle_syndication_debug(): void {
+    require_admin_token();
+    $json = request_json();
+
+    $body = trim((string)($json["body"] ?? ""));
+    if ($body === "") {
+        respond(422, ["error" => "body_required"]);
+    }
+
+    $platform = strtolower(trim((string)($json["platform"] ?? "")));
+    $publish = filter_var($json["publish"] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+    $debug = [
+        'ok' => true,
+        'config' => social_config_status(),
+    ];
+
+    if ($platform !== '') {
+        if (!in_array($platform, ['x', 'bluesky', 'threads'], true)) {
+            respond(422, ["error" => "invalid_platform"]);
+        }
+
+        $debug['route'] = [
+            'ok' => true,
+            'forced' => true,
+            'platform' => $platform,
+        ];
+    } else {
+        $route = route_micro_post_result($body);
+        $debug['route'] = $route;
+
+        if (!($route['ok'] ?? false)) {
+            $debug['publish'] = ['skipped' => true, 'reason' => 'route_failed'];
+            respond(200, $debug);
+        }
+
+        $platform = (string)$route['platform'];
+    }
+
+    if (!$publish) {
+        $debug['publish'] = [
+            'skipped' => true,
+            'reason' => 'publish_false',
+            'platform' => $platform,
+        ];
+        respond(200, $debug);
+    }
+
+    $debug['publish'] = [
+        'platform' => $platform,
+        'result' => http_result_summary(publish_to_platform($platform, $body), true),
+    ];
+
+    respond(200, $debug);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_debug"])) {
+    handle_syndication_debug();
 }
 
 try {
