@@ -26,8 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 
 ignore_user_abort(true);
 
-require '/home/flawhvna/private/microblog-config.php';
-
 function respond(int $status, array $data): void {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -37,6 +35,26 @@ function respond(int $status, array $data): void {
 function config_string(string $name, string $default = ''): string {
     $value = $GLOBALS[$name] ?? $default;
     return is_string($value) ? trim($value) : $default;
+}
+
+$configPath = '/home/flawhvna/private/microblog-config.php';
+if (!is_readable($configPath)) {
+    error_log("Flitter config is not readable: {$configPath}");
+    respond(500, ['error' => 'config_unreadable']);
+}
+
+try {
+    include $configPath;
+} catch (Throwable $e) {
+    error_log("Flitter config failed to load: " . $e->getMessage());
+    respond(500, ['error' => 'config_load_failed']);
+}
+
+foreach (['dbHost', 'dbName', 'dbUser', 'dbPass', 'adminToken'] as $requiredConfigName) {
+    if (config_string($requiredConfigName) === '') {
+        error_log("Flitter config is missing required value: {$requiredConfigName}");
+        respond(500, ['error' => 'config_missing_required_value']);
+    }
 }
 
 function http_json_request(string $url, array $headers, array $payload, int $timeoutSeconds = 6): array {
