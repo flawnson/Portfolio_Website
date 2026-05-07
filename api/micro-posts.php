@@ -41,6 +41,12 @@ function config_enabled(string $name): bool {
     return filter_var($GLOBALS[$name] ?? false, FILTER_VALIDATE_BOOLEAN);
 }
 
+function config_int(string $name, int $default, int $min, int $max): int {
+    $value = $GLOBALS[$name] ?? $default;
+    $intValue = is_numeric($value) ? (int)$value : $default;
+    return max($min, min($intValue, $max));
+}
+
 $configPath = '/home/flawhvna/private/microblog-config.php';
 if (!is_readable($configPath)) {
     error_log("Flitter config is not readable: {$configPath}");
@@ -173,13 +179,55 @@ function http_form_request(string $url, array $fields, int $timeoutSeconds = 6):
     ];
 }
 
+function gemini_response_text(array $response): string {
+    $parts = $response['json']['candidates'][0]['content']['parts'] ?? [];
+    if (!is_array($parts)) {
+        return '';
+    }
+
+    $text = '';
+    foreach ($parts as $part) {
+        if (isset($part['text']) && is_string($part['text'])) {
+            $text .= $part['text'];
+        }
+    }
+
+    return strtolower(trim($text));
+}
+
+function gemini_response_details(array $response): array {
+    $details = [];
+
+    if (isset($response['json']['candidates'][0]['finishReason'])) {
+        $details['finish_reason'] = $response['json']['candidates'][0]['finishReason'];
+    }
+
+    if (isset($response['json']['promptFeedback'])) {
+        $details['prompt_feedback'] = $response['json']['promptFeedback'];
+    }
+
+    return $details;
+}
+
 function route_micro_post_result(string $body): array {
     $apiKey = config_string('geminiApiKey');
     if ($apiKey === '') {
         return ['ok' => false, 'error' => 'gemini_not_configured'];
     }
 
-    $model = rawurlencode(config_string('geminiModel', 'gemini-2.5-flash'));
+    $modelName = config_string('geminiModel', 'gemini-2.5-flash');
+    $model = rawurlencode($modelName);
+    $generationConfig = [
+        'temperature' => 0,
+        'maxOutputTokens' => 16,
+    ];
+
+    if (strpos($modelName, '2.5') !== false) {
+        $generationConfig['thinkingConfig'] = [
+            'thinkingBudget' => 0,
+        ];
+    }
+
     $prompt = <<<'PROMPT'
 You are a routing model. Your ONLY job is to decide which social platform a text-only post should be published to.
 
@@ -317,11 +365,9 @@ PROMPT;
                     ],
                 ],
             ],
-            'generationConfig' => [
-                'temperature' => 0,
-                'maxOutputTokens' => 5,
-            ],
-        ]
+            'generationConfig' => $generationConfig,
+        ],
+        config_int('geminiTimeoutSeconds', 30, 1, 60)
     );
 
     if (!($response['ok'] ?? false)) {
@@ -332,17 +378,14 @@ PROMPT;
         ];
     }
 
-    $text = '';
-    if (isset($response['json']['candidates'][0]['content']['parts'][0]['text'])) {
-        $text = strtolower(trim((string)$response['json']['candidates'][0]['content']['parts'][0]['text']));
-    }
+    $text = gemini_response_text($response);
 
     if (!in_array($text, ['x', 'bluesky', 'threads'], true)) {
         return [
             'ok' => false,
             'error' => 'invalid_route',
             'raw_output' => truncate_text($text),
-            'response' => http_result_summary($response),
+            'response' => array_merge(http_result_summary($response), gemini_response_details($response)),
         ];
     }
 
@@ -350,7 +393,7 @@ PROMPT;
         'ok' => true,
         'platform' => $text,
         'raw_output' => $text,
-        'response' => http_result_summary($response),
+        'response' => array_merge(http_result_summary($response), gemini_response_details($response)),
     ];
 }
 
@@ -497,30 +540,54 @@ function publish_to_platform(string $platform, string $body): array {
     return ['ok' => false, 'error' => 'invalid_platform'];
 }
 
-function syndicate_micro_post(string $body, int $postId): void {
+function syndicate_micro_post(string $body, int $postId): array {
     if (!config_enabled('socialSyndicationEnabled')) {
-        return;
+        return [
+            'status' => 'disabled',
+        ];
     }
 
     $route = route_micro_post_result($body);
     if (!($route['ok'] ?? false)) {
         error_log("Flitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
-        return;
+        return [
+            'status' => 'skipped',
+            'reason' => 'route_failed',
+            'route' => $route,
+        ];
     }
 
     $platform = (string)$route['platform'];
     $result = publish_to_platform($platform, $body);
+    $summary = http_result_summary($result);
 
     if (!($result['ok'] ?? false)) {
-        error_log("Flitter syndication failed for post {$postId} to {$platform}: " . json_encode(http_result_summary($result), JSON_UNESCAPED_SLASHES));
+        error_log("Flitter syndication failed for post {$postId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
+        return [
+            'status' => 'failed',
+            'platform' => $platform,
+            'route' => $route,
+            'result' => $summary,
+        ];
     }
+
+    return [
+        'status' => 'published',
+        'platform' => $platform,
+        'route' => $route,
+        'result' => $summary,
+    ];
 }
 
-function run_syndication_safely(string $body, int $postId): void {
+function run_syndication_safely(string $body, int $postId): array {
     try {
-        syndicate_micro_post($body, $postId);
+        return syndicate_micro_post($body, $postId);
     } catch (Throwable $e) {
         error_log("Flitter syndication crashed for post {$postId}: " . $e->getMessage());
+        return [
+            'status' => 'crashed',
+            'error' => $e->getMessage(),
+        ];
     }
 }
 
@@ -531,6 +598,7 @@ function social_config_status(): array {
         'gemini' => [
             'api_key_present' => config_string('geminiApiKey') !== '',
             'model' => config_string('geminiModel', 'gemini-2.5-flash'),
+            'timeout_seconds' => config_int('geminiTimeoutSeconds', 30, 1, 60),
         ],
         'x' => [
             'api_key_present' => config_string('xApiKey') !== '',
@@ -712,22 +780,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     ]);
 
     $postId = (int)$pdo->lastInsertId();
+    $syndicationResult = run_syndication_safely($body, $postId);
 
-    http_response_code(201);
-    echo json_encode([
+    respond(201, [
         "ok" => true,
         "id" => $postId,
-        "syndication" => filter_var($GLOBALS['socialSyndicationEnabled'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "queued" : "disabled",
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request();
-    } else {
-        flush();
-    }
-
-    run_syndication_safely($body, $postId);
-    exit;
+        "syndication" => (string)($syndicationResult['status'] ?? 'unknown'),
+        "syndication_result" => $syndicationResult,
+    ]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "PUT" || $_SERVER["REQUEST_METHOD"] === "PATCH") {

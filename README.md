@@ -36,7 +36,7 @@ I manually write and upload a small php config script that holds my config info 
 I use a custom php CRUD API to post to my website.
 All endpoints are in the micro-posts.php file.
 
-Optional social syndication is also handled from `micro-posts.php`. The database insert happens first; Gemini routing and external platform posting happen afterward and only log failures, so Flitter remains the source of truth even if Gemini, X, Bluesky, or Threads fail.
+Optional social syndication is also handled from `micro-posts.php`. The database insert happens first; Gemini routing and external platform posting happen afterward, so Flitter remains the source of truth even if Gemini, X, Bluesky, or Threads fail. The request waits for syndication to finish and returns a `syndication_result`, but the database insert is already committed before any downstream API call runs.
 
 ### Social platform configuration
 All secrets live in `/home/flawhvna/private/microblog-config.php`, never in this repository. The social credentials must all be account-scoped credentials for my own personal accounts. If a social platform fails, the Flitter database post should still be considered successful.
@@ -48,6 +48,7 @@ $socialSyndicationEnabled = true;
 // Gemini routing
 $geminiApiKey = '...';
 $geminiModel = 'gemini-2.5-flash';
+$geminiTimeoutSeconds = 30;
 
 // X, posting as my personal X account
 $xApiKey = '...';
@@ -69,6 +70,7 @@ Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Flitter p
 
 #### Gemini routing
 Gemini decides which single platform receives the post. The PHP code calls the Gemini REST API with an explicit API key and expects exactly one of `x`, `bluesky`, or `threads`.
+For the default `gemini-2.5-flash` model, the router disables thinking with `thinkingBudget = 0` because this is a one-token classification task. The Gemini request waits up to `$geminiTimeoutSeconds`, defaulting to 30 seconds. If Gemini is not configured, fails, or returns anything other than `x`, `bluesky`, or `threads`, syndication is skipped for that post.
 
 1. Go to Google AI Studio.
 2. Create or open the project for this app.
@@ -78,6 +80,7 @@ Gemini decides which single platform receives the post. The PHP code calls the G
 ```php
 $geminiApiKey = 'AIza...';
 $geminiModel = 'gemini-2.5-flash';
+$geminiTimeoutSeconds = 30;
 ```
 
 #### X
