@@ -4,13 +4,13 @@ deployment:
     - export DEPLOYPATH=/home/flawhvna/public_html/
     - /bin/mkdir -p $DEPLOYPATH/api
     - /bin/mkdir -p $DEPLOYPATH/blog
-    - /bin/mkdir -p $DEPLOYPATH/flitter
+    - /bin/mkdir -p $DEPLOYPATH/fwitter
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp maintenance-page.html $DEPLOYPATH
     - /bin/cp robots.txt $DEPLOYPATH
     - /bin/cp sitemap.xml $DEPLOYPATH
     - /bin/cp -R blog/* $DEPLOYPATH/blog/
-    - /bin/cp -R flitter/* $DEPLOYPATH/flitter/
+    - /bin/cp -R fwitter/* $DEPLOYPATH/fwitter/
     - /bin/cp api/micro-posts.php $DEPLOYPATH/api/micro-posts.php
     - /bin/cp api/github-last-commit.php $DEPLOYPATH/api/github-last-commit.php

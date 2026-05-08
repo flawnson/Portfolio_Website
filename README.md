@@ -11,9 +11,9 @@ You'll need to log into CPanel, pull the most recent changes, and deploy HEAD af
 
 The main dependencies are Bootstrap 3 (I didn't use 4 because my previous website used 3), fontawesome (and it's cousin, Academicicons), and fonts (Raleway, Roboto, and Karla) supplied by Google's CDN. Everything else is coded from scratch. The home page has a link to my blog.
 
-## Flitter
+## Fwitter
 I've had this problem for many years where I get ideas for tweets but decide not to share them.
-Flitter is my solution to this problem.
+Fwitter is my solution to this problem.
 It's my own custom Twitter client that I use to share ideas and thoughts.
 It comes with a small app that I built and installed on my phone that I can use to instantly post something to my website.
 ### Database
@@ -36,10 +36,10 @@ I manually write and upload a small php config script that holds my config info 
 I use a custom php CRUD API to post to my website.
 All endpoints are in the micro-posts.php file.
 
-Optional social syndication is also handled from `micro-posts.php`. The database insert happens first; Gemini routing and external platform posting happen afterward, so Flitter remains the source of truth even if Gemini, X, Bluesky, or Threads fail. The request waits for syndication to finish and returns a `syndication_result`, but the database insert is already committed before any downstream API call runs.
+Optional social syndication is also handled from `micro-posts.php`. The database insert happens first; Gemini routing and external platform posting happen afterward, so Fwitter remains the source of truth even if Gemini, X, Bluesky, or Threads fail. The request waits for syndication to finish and returns a `syndication_result`, but the database insert is already committed before any downstream API call runs.
 
 ### Social platform configuration
-All secrets live in `/home/flawhvna/private/microblog-config.php`, never in this repository. The social credentials must all be account-scoped credentials for my own personal accounts. If a social platform fails, the Flitter database post should still be considered successful.
+All secrets live in `/home/flawhvna/private/microblog-config.php`, never in this repository. The social credentials must all be account-scoped credentials for my own personal accounts. If a social platform fails, the Fwitter database post should still be considered successful.
 
 The full optional config shape is:
 ```php
@@ -66,7 +66,7 @@ $threadsUserId = '...';
 $threadsAccessToken = '...';
 ```
 
-Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Flitter posting still works, then turn it on after the platform credentials are configured.
+Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Fwitter posting still works, then turn it on after the platform credentials are configured.
 
 #### Gemini routing
 Gemini decides which single platform receives the post. The PHP code calls the Gemini REST API with an explicit API key and expects exactly one of `x`, `bluesky`, or `threads`.
@@ -108,7 +108,7 @@ The access token must say it is for the account I want to post from. That is wha
 The Bluesky integration logs in with my handle and an app password, then creates an `app.bsky.feed.post` record through the AT Protocol API.
 
 1. In Bluesky, open `Settings -> App Passwords`.
-2. Create an app password named something like `Flitter`.
+2. Create an app password named something like `Fwitter`.
 3. Use my Bluesky handle without the leading `@`.
 4. Keep the service as `https://bsky.social` unless the account uses a different personal data server.
 
@@ -228,12 +228,12 @@ Verify the final token:
 curl "https://graph.threads.net/v1.0/me?fields=id,username&access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
 ```
 
-Test a direct text post before testing through Flitter:
+Test a direct text post before testing through Fwitter:
 
 ```bash
 curl -X POST "https://graph.threads.net/v1.0/THREADS_USER_ID/threads" \
   -d "media_type=TEXT" \
-  -d "text=Testing Flitter Threads API setup." \
+  -d "text=Testing Fwitter Threads API setup." \
   -d "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
 ```
 
@@ -254,7 +254,7 @@ curl -G "https://graph.threads.net/refresh_access_token" \
 ```
 
 #### Syndication diagnostics
-There is a protected diagnostics mode for testing the social path without creating a Flitter database post. It requires the same `X-Admin-Token` as normal posting.
+There is a protected diagnostics mode for testing the social path without creating a Fwitter database post. It requires the same `X-Admin-Token` as normal posting.
 
 Check config presence and Gemini routing without publishing:
 
@@ -271,7 +271,7 @@ Force-test one platform without Gemini and actually publish a test post:
 curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
   -H "Content-Type: application/json" \
   -H "X-Admin-Token: ADMIN_TOKEN" \
-  -d '{"body":"Testing Flitter syndication diagnostics.","platform":"bluesky","publish":true}'
+  -d '{"body":"Testing Fwitter syndication diagnostics.","platform":"bluesky","publish":true}'
 ```
 
 Valid `platform` values are `x`, `bluesky`, and `threads`. Leave `publish` as `false` or omit it when only checking config and routing.
@@ -286,7 +286,7 @@ Valid `platform` values are `x`, `bluesky`, and `threads`. Leave `publish` as `f
 
 ### App
 I wrote a small iOS app with SwiftUI to post to my website from anywhere.
-You can find it in the [Flitter](https://github.com/flawnson/flitter) repo on my GitHub.
+You can find it in the [Fwitter](https://github.com/flawnson/fwitter) repo on my GitHub.
 
 # Blog
 This is a simple python-rendered markdown blog.
@@ -326,5 +326,5 @@ I use onedollarstats to track page views.
 
 # Ideas
 - [ ] A guestbook for site visitors to leave a note or sticker
-- [x] A searchable feed of Flitter
+- [x] A searchable feed of Fwitter
 - [x] Table of contents for blog posts

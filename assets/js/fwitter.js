@@ -1,6 +1,6 @@
 const PAGE_SIZE = 20;
 
-const feedRoot = document.getElementById("flitter-feed");
+const feedRoot = document.getElementById("fwitter-feed");
 const statusEl = document.getElementById("feed-status");
 const sentinel = document.getElementById("feed-sentinel");
 
@@ -105,14 +105,14 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
 
 function buildPostElement(post) {
     const article = document.createElement("article");
-    article.className = "flitter-post";
+    article.className = "fwitter-post";
 
     const body = document.createElement("p");
-    body.className = "flitter-post-body";
+    body.className = "fwitter-post-body";
     body.innerHTML = linkify(escapeHtml(post.body));
 
     const meta = document.createElement("small");
-    meta.className = "flitter-post-meta";
+    meta.className = "fwitter-post-meta";
     meta.textContent = formatRelativeTime(post.created_at);
 
     article.appendChild(body);

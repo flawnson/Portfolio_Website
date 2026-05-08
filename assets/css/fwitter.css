@@ -1,57 +1,57 @@
-.flitter-shell {
+.fwitter-shell {
     padding-top: 28px;
     padding-bottom: 52px;
 }
 
-.flitter-inner {
+.fwitter-inner {
     padding-left: 16px;
     padding-right: 16px;
 }
 
-.flitter-kicker {
+.fwitter-kicker {
     margin-bottom: 14px;
     font-size: 1.4rem;
 }
 
-.flitter-kicker a {
+.fwitter-kicker a {
     color: inherit;
     text-decoration: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.28);
 }
 
-.flitter-kicker a:hover {
+.fwitter-kicker a:hover {
     text-decoration: none;
     border-bottom-color: rgba(0, 0, 0, 0.7);
 }
 
-.flitter-header {
+.fwitter-header {
     margin-bottom: 28px;
 }
 
-.flitter-title {
+.fwitter-title {
     margin: 0 0 10px;
     font-size: 4rem;
     line-height: 1.1;
     font-weight: 700;
 }
 
-.flitter-subtitle {
+.fwitter-subtitle {
     margin: 0;
     font-size: 1.8rem;
     line-height: 1.65;
     opacity: 0.82;
 }
 
-.flitter-feed {
+.fwitter-feed {
     border-top: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-.flitter-post {
+.fwitter-post {
     padding: 18px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-.flitter-post-body {
+.fwitter-post-body {
     margin: 0 0 8px;
     font-size: 1.8rem;
     line-height: 1.7;
@@ -59,7 +59,7 @@
     word-break: break-word;
 }
 
-.flitter-post-meta {
+.fwitter-post-meta {
     display: block;
     font-size: 1.3rem;
     opacity: 0.68;
@@ -75,40 +75,40 @@
     height: 1px;
 }
 
-body.dark-mode .flitter-kicker a {
+body.dark-mode .fwitter-kicker a {
     border-bottom-color: rgba(255, 255, 255, 0.34);
 }
 
-body.dark-mode .flitter-feed,
-body.dark-mode .flitter-post {
+body.dark-mode .fwitter-feed,
+body.dark-mode .fwitter-post {
     border-color: rgba(255, 255, 255, 0.16);
 }
 
 @media (max-width: 767px) {
-    .flitter-shell {
+    .fwitter-shell {
         padding-top: 16px;
         padding-bottom: 40px;
     }
 
-    .flitter-title {
+    .fwitter-title {
         font-size: 3rem;
     }
 
-    .flitter-post-body {
+    .fwitter-post-body {
         font-size: 1.65rem;
         line-height: 1.75;
     }
 }
 
 @media (min-width: 768px) {
-    .flitter-inner {
+    .fwitter-inner {
         padding-left: 24px;
         padding-right: 24px;
     }
 }
 
 @media (min-width: 1200px) {
-    .flitter-inner {
+    .fwitter-inner {
         padding-left: 32px;
         padding-right: 32px;
     }

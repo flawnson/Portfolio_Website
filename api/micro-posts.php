@@ -49,20 +49,20 @@ function config_int(string $name, int $default, int $min, int $max): int {
 
 $configPath = '/home/flawhvna/private/microblog-config.php';
 if (!is_readable($configPath)) {
-    error_log("Flitter config is not readable: {$configPath}");
+    error_log("Fwitter config is not readable: {$configPath}");
     respond(500, ['error' => 'config_unreadable']);
 }
 
 try {
     include $configPath;
 } catch (Throwable $e) {
-    error_log("Flitter config failed to load: " . $e->getMessage());
+    error_log("Fwitter config failed to load: " . $e->getMessage());
     respond(500, ['error' => 'config_load_failed']);
 }
 
 foreach (['dbHost', 'dbName', 'dbUser', 'dbPass', 'adminToken'] as $requiredConfigName) {
     if (config_string($requiredConfigName) === '') {
-        error_log("Flitter config is missing required value: {$requiredConfigName}");
+        error_log("Fwitter config is missing required value: {$requiredConfigName}");
         respond(500, ['error' => 'config_missing_required_value']);
     }
 }
@@ -550,7 +550,7 @@ function syndicate_micro_post(string $body, int $postId): array {
 
     $route = route_micro_post_result($body);
     if (!($route['ok'] ?? false)) {
-        error_log("Flitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
+        error_log("Fwitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
         return [
             'status' => 'skipped',
             'reason' => 'route_failed',
@@ -563,7 +563,7 @@ function syndicate_micro_post(string $body, int $postId): array {
     $summary = http_result_summary($result);
 
     if (!($result['ok'] ?? false)) {
-        error_log("Flitter syndication failed for post {$postId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
+        error_log("Fwitter syndication failed for post {$postId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
         return [
             'status' => 'failed',
             'platform' => $platform,
@@ -584,7 +584,7 @@ function run_syndication_safely(string $body, int $postId): array {
     try {
         return syndicate_micro_post($body, $postId);
     } catch (Throwable $e) {
-        error_log("Flitter syndication crashed for post {$postId}: " . $e->getMessage());
+        error_log("Fwitter syndication crashed for post {$postId}: " . $e->getMessage());
         return [
             'status' => 'crashed',
             'error' => $e->getMessage(),
