@@ -326,5 +326,5 @@ I use onedollarstats to track page views.
 
 # Ideas
 - [ ] A guestbook for site visitors to leave a note or sticker
-- [ ] A searchable feed of Flitter
+- [x] A searchable feed of Flitter
 - [x] Table of contents for blog posts

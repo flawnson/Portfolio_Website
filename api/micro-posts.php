@@ -251,7 +251,6 @@ x
 
   * authority
   * startups
-  * rare disease advocacy
   * technical ideas
   * AI
   * systems thinking
@@ -259,6 +258,8 @@ x
   * concise insight-dense takes
   * intellectual arguments
   * founder energy
+  * philosophy
+  * experimental ideas
   * professional reputation
 * Tone:
 
@@ -280,15 +281,13 @@ bluesky
 * Best for:
 
   * creativity
-  * music
+  * music (analog and digital)
   * books
-  * philosophy
-  * internet culture
   * artistic observations
   * thoughtful reflection
-  * experimental ideas
   * poetic or introspective writing
   * weird or niche observations
+  * chill hobbies like fountain pens, journaling, piano, keyboards, etc.
 * Tone:
 
   * reflective
@@ -309,13 +308,15 @@ threads
 
   * lifestyle
   * fitness
-  * food
-  * cats
+  * food and restaurants
+  * cats and pets
+  * internet culture
   * casual daily life
   * relatable humor
   * warm personal moments
   * approachable social content
   * light inspiration
+  * active hobbies like motorcycles, sports, etc.
 * Tone:
 
   * casual
@@ -331,10 +332,10 @@ threads
   * low-stakes
   * socially relatable
 
-Priority rules:
+Guideline rules:
 
-* If a post is about startups, rare disease work, AI, technical systems, or ambitious ideas -> prefer x
-* If a post is artistic, philosophical, reflective, or culturally experimental -> prefer bluesky
+* If a post is about startups, AI, technical systems, culturally experimental, or ambitious ideas -> prefer x
+* If a post is artistic, philosophical, or reflective, -> prefer bluesky
 * If a post is about everyday life, food, fitness, pets, or casual relatable experiences -> prefer threads
 
 Tie-breaking rules:
