@@ -781,14 +781,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     ]);
 
     $postId = (int)$pdo->lastInsertId();
-    $syndicationResult = run_syndication_safely($body, $postId);
 
-    respond(201, [
-        "ok" => true,
-        "id" => $postId,
-        "syndication" => (string)($syndicationResult['status'] ?? 'unknown'),
-        "syndication_result" => $syndicationResult,
-    ]);
+    // Respond immediately — post is saved; syndication runs after the client gets its response
+    http_response_code(201);
+    header('Content-Type: application/json');
+    $responseJson = json_encode(
+        ["ok" => true, "id" => $postId, "syndication" => "pending"],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    header('Content-Length: ' . strlen($responseJson));
+    echo $responseJson;
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        ob_flush();
+        flush();
+    }
+
+    run_syndication_safely($body, $postId);
+    exit;
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "PUT" || $_SERVER["REQUEST_METHOD"] === "PATCH") {
