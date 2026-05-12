@@ -4,82 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Building Fwitter: a personal microblog with AI-powered social syndication | Flawnson</title>
-    <meta name="description"
-          content="How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.">
+    <meta name="description" content="How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.">
     <link rel="canonical" href="https://flawnson.com/blog/building-fwitter/">
     <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
     <link rel="stylesheet" href="/assets/css/bootstrap.css">
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="/assets/css/blog.css">
-    <script type="application/ld+json">{
-        "@context": "https://schema.org",
-        "@graph": [
-            {
-                "@type": "BlogPosting",
-                "@id": "https://flawnson.com/blog/building-fwitter/#article",
-                "headline": "Building Fwitter: a personal microblog with AI-powered social syndication",
-                "description": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.",
-                "image": [
-                    "https://flawnson.com/assets/images/profile%202.jpg"
-                ],
-                "author": {
-                    "@type": "Person",
-                    "name": "Flawnson Tong",
-                    "url": "https://flawnson.com/#person"
-                },
-                "publisher": {
-                    "@type": "Organization",
-                    "name": "Flawnson",
-                    "url": "https://flawnson.com",
-                    "logo": {
-                        "@type": "ImageObject",
-                        "url": "https://flawnson.com/assets/images/Favicon.png"
-                    }
-                },
-                "datePublished": "2026-05-11",
-                "dateModified": "2026-05-11",
-                "mainEntityOfPage": "https://flawnson.com/blog/building-fwitter/",
-                "keywords": [
-                    "engineering",
-                    "php",
-                    "ai"
-                ]
-            },
-            {
-                "@type": "BreadcrumbList",
-                "itemListElement": [
-                    {
-                        "@type": "ListItem",
-                        "position": 1,
-                        "name": "Home",
-                        "item": "https://flawnson.com/"
-                    },
-                    {
-                        "@type": "ListItem",
-                        "position": 2,
-                        "name": "Blog",
-                        "item": "https://flawnson.com/blog/"
-                    },
-                    {
-                        "@type": "ListItem",
-                        "position": 3,
-                        "name": "Building Fwitter: a personal microblog with AI-powered social syndication",
-                        "item": "https://flawnson.com/blog/building-fwitter/"
-                    }
-                ]
-            },
-            {
-                "@type": "Organization",
-                "@id": "https://flawnson.com/#organization",
-                "name": "Flawnson",
-                "url": "https://flawnson.com/",
-                "logo": {
-                    "@type": "ImageObject",
-                    "url": "https://flawnson.com/assets/images/Favicon.png"
-                }
-            }
-        ]
-    }</script>
+    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "BlogPosting", "@id": "https://flawnson.com/blog/building-fwitter/#article", "headline": "Building Fwitter: a personal microblog with AI-powered social syndication", "description": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.", "image": ["https://flawnson.com/assets/images/profile%202.jpg"], "author": {"@type": "Person", "name": "Flawnson Tong", "url": "https://flawnson.com/#person"}, "publisher": {"@type": "Organization", "name": "Flawnson", "url": "https://flawnson.com", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}, "datePublished": "2026-05-11", "dateModified": "2026-05-11", "mainEntityOfPage": "https://flawnson.com/blog/building-fwitter/", "keywords": ["engineering", "php", "ai"]}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://flawnson.com/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://flawnson.com/blog/"}, {"@type": "ListItem", "position": 3, "name": "Building Fwitter: a personal microblog with AI-powered social syndication", "item": "https://flawnson.com/blog/building-fwitter/"}]}, {"@type": "Organization", "@id": "https://flawnson.com/#organization", "name": "Flawnson", "url": "https://flawnson.com/", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}]}</script>
 </head>
 <body>
 <div class="container-fluid blog-shell">
@@ -97,119 +28,59 @@
                         Building Fwitter: a personal microblog with AI-powered social syndication
                     </h1>
                     <div class="blog-meta">
-                        <span class="blog-tags"><span class="blog-tag">engineering</span><span
-                                class="blog-tag">php</span><span class="blog-tag">ai</span></span>
+                        <span class="blog-tags"><span class="blog-tag">engineering</span><span class="blog-tag">php</span><span class="blog-tag">ai</span></span>
                     </div>
-                    <p class="blog-excerpt">How I built a microblog on my own domain that automatically routes posts to
-                        X, Bluesky, and Threads using Gemini AI.</p>
+                    <p class="blog-excerpt">How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.</p>
                 </header>
 
                 <article class="blog-article">
-                    <p>For the longest time I've had this mental block that prevented me from posting online.</p>
-                    <p>Every time I have a Twitter-thought; the activation energy I need to
-                        actually open the app, write the post, and post it feels abnormally high.
-                        I'm not on social media often; I don't doomscroll or even upvote/like/&lt;insert your mechanic
-                        here&gt; posts, and I almost never leave comments/replies.</p>
-                    <p>
-                        Then there's the fact that these platforms have a clear bias towards certain sentiments, styles,
-                        and opinions.
-                        How do I, as a social-media minimalist, navigate these trecherous waters and build my social
-                        capital?
-                    </p>
-                    <p>So to fix my problems, I built <a href="/fwitter/">Fwitter</a>: a personal microblog that lives
-                        on my domain, stores
-                        everything in my own database, and syndicates to social platforms automatically. The interesting
-                        part is the routing: instead of cross-posting the same thing everywhere, I use Gemini (because
-                        they have a generous free tier) to decide which single platform each fweet is best suited for,
-                        then route the content to the platform using their API.</p>
-                    <p>Here's how it's built.</p>
-                    <nav class="blog-toc" aria-label="Table of contents">
-                        <ol class="blog-toc-list">
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#the-design-philosophy">The design
-                                philosophy</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#the-database">The database</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#the-api">The API</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#routing-with-gemini">Routing with
-                                Gemini</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#social-platform-integrations">Social
-                                platform integrations</a></li>
-                            <li class="blog-toc-item blog-toc-level-2"><a href="#x-oauth-1-0a">X: OAuth 1.0a</a></li>
-                            <li class="blog-toc-item blog-toc-level-2"><a href="#bluesky-at-protocol">Bluesky: AT
-                                Protocol</a></li>
-                            <li class="blog-toc-item blog-toc-level-2"><a href="#threads-the-two-step-dance">Threads:
-                                the two-step dance</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#non-blocking-syndication">Non-blocking
-                                syndication</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#the-frontend">The frontend</a></li>
-                            <li class="blog-toc-item blog-toc-level-1"><a href="#reflections">Reflections</a></li>
-                        </ol>
-                    </nav>
-                    <h1 id="the-design-philosophy">The design philosophy</h1>
-                    <p>When I started building Fwitter, I hoped it would help reduce the friction of posting my thoughts
-                        online more.
-                        To that end, it has succeeded beyond my expectations, and I think it's safe to say I've
-                        developed a habit of opening and posting every day.
-                        This meant that I needed my own database, which was easy to set up on MySQL, cPanel's default
-                        SQL db.
-                        Even now it's the source of truth for my posts, and routing only happens after the post has
-                        successfully written to database.
-                    </p>
-                    <p>In Fwitter, a post exists the moment it's written to my database. Everything after that — Gemini
-                        routing, publishing to X, publishing to Bluesky, publishing to Threads — is bonus. Those
-                        operations are fire-and-forget. If they fail, the post still exists. If they succeed, great.
-                        Social platforms are distribution, not storage.</p>
-                    <p>This also means the system degrades gracefully. If Gemini is down, the post still gets saved and
-                        syndication is skipped. If the X API is flaky, the post still exists on Fwitter. The only
-                        failure mode that matters is the database write.</p>
-                    <h1 id="the-database">The database</h1>
-                    <p>The schema is deliberately minimal:</p>
-                    <pre><code>CREATE TABLE micro_posts (
+                    <p>For the longest time I&#x27;ve had this mental block that prevented me from posting online.</p>
+<p>Every time I have a Twitter-thought, the activation energy I need to actually open the app, write the post, and publish it feels abnormally high. I&#x27;m not on social media often; I don&#x27;t doomscroll or even upvote/like/&lt;insert your mechanic here&gt; posts, and I almost never leave comments or replies.</p>
+<p>Then there is the fact that these platforms have a clear bias toward certain sentiments, styles, and opinions. How do I, as a social-media minimalist, navigate these treacherous waters and build my social capital?</p>
+<p>And of course, there&#x27;s always the risk of opening the app and getting sucked into reading posts and being a &quot;consumer&quot; instead of a &quot;producer&quot;.</p>
+<p>So to fix all my problems, I built <a href="/fwitter/">Fwitter</a>: a personal microblog that lives on my domain, stores everything in my own database, and syndicates to social platforms automatically. The interesting part is the routing: instead of cross-posting the same thing everywhere, I use Gemini (because they have a generous free tier) to decide which single platform each fweet is best suited for, then route the content to that platform using its API.</p>
+<p>Here&#x27;s how it&#x27;s built.</p>
+<nav class="blog-toc" aria-label="Table of contents">
+  <ol class="blog-toc-list">
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-design-philosophy">The design philosophy</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-database">The database</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-api">The API</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#routing-with-gemini">Routing with Gemini</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#social-platform-integrations">Social platform integrations</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#x-oauth-10a">X: OAuth 1.0a</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#bluesky-at-protocol">Bluesky: AT Protocol</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#threads-the-two-step-dance">Threads: the two-step dance</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#non-blocking-syndication">Non-blocking syndication</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#the-frontend">The frontend</a></li>
+<li class="blog-toc-item blog-toc-level-1"><a href="#reflections">Reflections</a></li>
+  </ol>
+</nav>
+<h1 id="the-design-philosophy">The design philosophy</h1>
+<p>When I started building Fwitter, I hoped it would reduce the friction of posting my thoughts online more. To that end, it has succeeded beyond my expectations, and I think it is safe to say I have developed a habit of opening and posting every day. This meant I needed my own database, which was easy to set up on MySQL, cPanel&#x27;s default SQL DB. Even now, it is the source of truth for my posts, and routing only happens after the post has successfully been written to the database.</p>
+<p>In Fwitter, a post exists the moment it is written to my database. Everything after that - Gemini routing, publishing to X, publishing to Bluesky, publishing to Threads - is bonus. Those operations are fire-and-forget. If they fail, the post still exists. If they succeed, great. Social platforms are distribution, not storage.</p>
+<p>This also means the system degrades gracefully. If Gemini is down, the post still gets saved and syndication is skipped. If the X API is flaky, the post still exists on Fwitter. The only failure mode that matters is the database write.</p>
+<h1 id="the-database">The database</h1>
+<p>The schema is deliberately minimal:</p>
+<pre><code>CREATE TABLE micro_posts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     body TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published TINYINT(1) NOT NULL DEFAULT 1
 );</code></pre>
-                    <p>That's it. No syndication status column, no external platform IDs stored back, no retry queue.
-                        Syndication results are logged to <code>error_log</code> for debugging, but they're not persisted in the schema.
-                        This might change if I add structured retry tracking,
-                        but the simplicity of not caring about syndication at the schema level has been worth it. I've
-                        never needed to query "which posts failed to publish to Bluesky" — and if I did, I'd add the
-                        column then.</p>
-                    <p>Using <code>BIGINT UNSIGNED</code> for the ID is a habit. With <code>AUTO_INCREMENT</code> it
-                        doesn't matter in practice, but IDs leak information about volume and I'd rather not have the ID
-                        space cap out unexpectedly if this runs for a long time. The <code>is_published</code> flag
-                        exists for future soft-delete support but isn't currently used in any query.</p>
-                    <h1 id="the-api">The API</h1>
-                    <p>The backend is a single PHP file. I'm hosting on cPanel with shared PHP hosting, which means no
-                        background workers, no job queues, no Redis. Just PHP with PDO and curl. That constraint turned
-                        out to be clarifying: you stop reaching for architecture and start thinking about what you
-                        actually need.</p>
-                    <p>Authentication is an admin token passed as an <code>X-Admin-Token</code> header, compared with
-                        <code>hash_equals()</code> to prevent timing attacks. The API supports <code>GET</code> for
-                        reading the feed and <code>POST</code> for creating posts. GET is public; POST requires the
-                        token.</p>
-                    <p>CORS is handled with an explicit allowlist: <code>flawnson.com</code> and localhost variants for
-                        development. The <code>Vary: Origin</code> header is set so caches don't serve one origin's
-                        response to another.</p>
-                    <p>Pagination on the read side uses a <code>before_id</code> cursor rather than offset-based pages.
-                        Offset pagination is simpler to implement but gets unstable under concurrent writes: if a new
-                        post arrives between page 1 and page 2, offset-based pagination either skips an item or shows it
-                        twice. ID cursors don't have this problem. The query fetches <code>limit + 1</code> rows — if
-                        you get back more than <code>limit</code>, there's a next page, and you return the last ID as
-                        the cursor.</p>
-                    <h1 id="routing-with-gemini">Routing with Gemini</h1>
-                    <p>Deciding which platform to post to is the most interesting part of the whole system.</p>
-                    <p>X, Bluesky, and Threads have genuinely different characters. X rewards sharp, opinion-dense takes
-                        — startup energy, systems thinking, technical insight in as few words as possible. Bluesky has a
-                        softer, more reflective community: creative work, books, thoughtful observations, writing that's
-                        a little more comfortable being uncertain. Threads is casual and warm — fitness updates,
-                        internet culture, relatable moments, the kind of thing you'd say to a friend.</p>
-                    <p>Posting the same thing verbatim to all three is lazy. But manually picking a platform for every
-                        post introduces enough friction that you stop posting. So I gave the routing decision to
-                        Gemini.</p>
-                    <p>The model gets the post text and a short description of each platform's character, and it outputs
-                        exactly one word:</p>
-                    <pre><code>You are a content routing agent for a personal microblog.
+<p>That&#x27;s it. No syndication status column, no external platform IDs stored back, no retry queue. Syndication results are logged to <code>error_log</code> for debugging, but they are not persisted in the schema. This might change if I add structured retry tracking, but the simplicity of not caring about syndication at the schema level has been worth it. I have never needed to query &quot;which posts failed to publish to Bluesky&quot; - and if I did, I would add the column then.</p>
+<p>Using <code>BIGINT UNSIGNED</code> for the ID is a habit. With <code>AUTO_INCREMENT</code> it does not matter in practice, but IDs leak information about volume and I&#x27;d rather not have the ID space cap out unexpectedly if this runs for a long time. The <code>is_published</code> flag exists for future soft-delete support but is not currently used in any query.</p>
+<h1 id="the-api">The API</h1>
+<p>The backend is a single PHP file. I am hosting on cPanel with shared PHP hosting, which means no background workers, no job queues, no Redis. Just PHP with PDO and curl.</p>
+<p>Authentication is an admin token passed as an <code>X-Admin-Token</code> header, compared with <code>hash_equals()</code> to prevent timing attacks. The API supports <code>GET</code> for reading the feed and <code>POST</code> for creating posts. <code>GET</code> is public; <code>POST</code> requires the token.</p>
+<p>CORS is handled with an explicit allowlist: <code>flawnson.com</code> and localhost variants for development. The <code>Vary: Origin</code> header is set so caches do not serve one origin&#x27;s response to another.</p>
+<p>Pagination on the read side uses a <code>before_id</code> cursor rather than offset-based pages. Offset pagination is simpler to implement but gets unstable under concurrent writes: if a new post arrives between page 1 and page 2, offset-based pagination either skips an item or shows it twice. ID cursors do not have this problem. The query fetches <code>limit + 1</code> rows - if I get back more than <code>limit</code>, there is a next page, and I return the last ID as the cursor.</p>
+<h1 id="routing-with-gemini">Routing with Gemini</h1>
+<p>Deciding which platform to post to is the most interesting part of the whole system.</p>
+<p>X, Bluesky, and Threads have genuinely different characters. X rewards sharp, opinion-dense takes - startup energy, systems thinking, technical insight in as few words as possible. Bluesky has a softer, more reflective community: creative work, books, thoughtful observations, writing that is a little more comfortable being uncertain. Threads is casual and warm - fitness updates, internet culture, relatable moments, the kind of thing I&#x27;d say to a friend.</p>
+<p>Posting the same thing verbatim to all three is suboptimal and would just be redundant. Having different posts on each platform gives readers incentive to check out my profile on other sites. And of course, if you just want to see everything I say, you can always just go to my website for the <a href="https://flawnson.com/fwitter/">full feed</a>.</p>
+<p>But having to think about which platform to post on for every post introduces enough friction that I stop posting. So I gave the routing decision to Gemini.</p>
+<p>The model gets the post&#x27;s text and a short description of each platform&#x27;s character, and it outputs exactly one word:</p>
+<pre><code>You are a content routing agent for a personal microblog.
 Given a post, choose the single best platform for it.
 
 Platform guide:
@@ -222,104 +93,64 @@ Platform guide:
 
 Output EXACTLY ONE of: x, bluesky, threads
 No punctuation. No explanation. No extra words.</code></pre>
-                    <p>The model is <code>gemini-2.5-flash</code> with temperature 0 (deterministic), thinking budget 0
-                        (fast and cheap on 2.5 models), and max output tokens of 16. The response is validated against
-                        the three expected values; anything else is treated as a routing failure and syndication is
-                        skipped.</p>
-                    <p>This is one of the more practical AI integrations I've built because it's not trying to generate
-                        anything creative — it's just making a classification decision that I'd otherwise have to make
-                        manually. The cost per call is a fraction of a cent. The latency is under a second. And it gets
-                        the routing right often enough that I rarely notice when it doesn't.</p>
-                    <aside class="blog-aside">
-                        <p>One thing I noticed: giving the model tie-breaker rules helped a lot. Serious or professional
-                            → X. Thoughtful or artistic → Bluesky. Casual or social → Threads. Without tie-breakers,
-                            borderline posts tended to cluster on X because it's listed first.</p>
-                    </aside>
-                    <h1 id="social-platform-integrations">Social platform integrations</h1>
-                    <p>Each platform has a completely different API design and auth story, which is either charming or
-                        exhausting depending on the day.</p>
-                    <h2 id="x-oauth-1-0a">X: OAuth 1.0a</h2>
-                    <aside class="blog-aside">
-                        <p>X is the only platform that required I purchase credits to use their API.
-                            At the time of writing it costs $0.015 per create request (and .20 to create with a URL in the content).
-                        </p>
-                    </aside>
-                    <p>X uses OAuth 1.0a with four credentials: consumer key, consumer secret, access token, and access
-                        token secret. This is the older standard. Every request is signed with HMAC-SHA1: you collect
-                        your parameters, sort them, percent-encode them, build a signature base string from the method +
-                        URL + parameters, and compute the signature using a key derived from your consumer and token
-                        secrets. It's verbose to implement but the logic is deterministic and easy to test.</p>
-                    <p>The endpoint is straightforward:</p>
-                    <pre><code>POST https://api.x.com/2/tweets
+<p>The model is <code>gemini-2.5-flash</code> with temperature 0 (deterministic), thinking budget 0 (fast and cheap on 2.5 models), and max output tokens of 16. The response is validated against the three expected values; anything else is treated as a routing failure and syndication is skipped.</p>
+<p>This is one of the easiest AI integrations I&#x27;ve built because it is not trying to generate anything creative - it is just making a classification decision that I&#x27;d otherwise have to make manually. The cost per call is a fraction of a cent. The latency is under a second. And it gets the routing right often enough that I rarely notice when it does not. Occasionally I&#x27;ll see a post get routed somewhere I didn&#x27;t expect, but it&#x27;s never blatantly wrong. At some point I&#x27;ll likely make some prompt adjustments to have the model optimize for and adapt to the current culture of each platform to improve the performance of the routing.</p>
+<aside class="blog-aside">
+<p>One thing I noticed: giving the model tie-breaker rules helped a lot. Serious or professional -&gt; X. Thoughtful or artistic -&gt; Bluesky. Casual or social -&gt; Threads. Without tie-breakers, borderline posts tended to cluster on X because it is listed first.</p>
+</aside>
+<h1 id="social-platform-integrations">Social platform integrations</h1>
+<p>Each platform has a completely different API design and auth system. With long-lived tokens, I shouldn&#x27;t have to do this very often.</p>
+<h2 id="x-oauth-10a">X: OAuth 1.0a</h2>
+<aside class="blog-aside">
+<p>X is the only platform that required I purchase credits to use their API. At the time of writing it costs $0.015 per create request (and $0.20 to create with a URL in the content).</p>
+</aside>
+<p>X uses OAuth 1.0a with four credentials: consumer key, consumer secret, access token, and access token secret. This is the older standard. Every request is signed with HMAC-SHA1: I collect your parameters, sort them, percent-encode them, build a signature base string from the method + URL + parameters, and compute the signature using a key derived from your consumer and token secrets. It is verbose to implement but the logic is deterministic and easy to test.</p>
+<p>The endpoint is straightforward:</p>
+<pre><code>POST https://api.x.com/2/tweets
 Content-Type: application/json
-Authorization: OAuth oauth_consumer_key="...", oauth_nonce="...", ...
+Authorization: OAuth oauth_consumer_key=&quot;...&quot;, oauth_nonce=&quot;...&quot;, ...
 
-{"text": "your post here"}</code></pre>
-                    <p>The main benefit of OAuth 1.0a over a simple bearer token is explicitness: these credentials are
-                        tied to exactly one account and one application. There's no ambiguity about which account a post
-                        comes from, and the signing overhead is the cost of that guarantee.</p>
-                    <h2 id="bluesky-at-protocol">Bluesky: AT Protocol</h2>
-                    <p>Bluesky uses the AT Protocol, which is newer and considerably cleaner to work with. Auth happens
-                        per-request: you post your handle and app password to <code>/xrpc/com.atproto.server.createSession</code>,
-                        which returns an access JWT and a DID (decentralized identifier). You then use the JWT to create
-                        a record in the right collection.</p>
-                    <pre><code>POST https://bsky.social/xrpc/com.atproto.repo.createRecord
+{&quot;text&quot;: &quot;your post here&quot;}</code></pre>
+<p>The main benefit of OAuth 1.0a over a simple bearer token is explicitness: these credentials are tied to exactly one account and one application. There is no ambiguity about which account a post comes from, and the signing overhead is the cost of that guarantee.</p>
+<h2 id="bluesky-at-protocol">Bluesky: AT Protocol</h2>
+<p>Bluesky uses the AT Protocol, which is newer and considerably cleaner to work with. Auth happens per request: I post my handle and app password to <code>/xrpc/com.atproto.server.createSession</code>, which returns an access JWT and a DID (decentralized identifier). I then use the JWT to create a record in the right collection.</p>
+<pre><code>POST https://bsky.social/xrpc/com.atproto.repo.createRecord
 Authorization: Bearer {accessJwt}
 
 {
-  "repo": "{did}",
-  "collection": "app.bsky.feed.post",
-  "record": {
-    "$type": "app.bsky.feed.post",
-    "text": "your post here",
-    "createdAt": "2026-05-11T12:00:00Z"
+  &quot;repo&quot;: &quot;{did}&quot;,
+  &quot;collection&quot;: &quot;app.bsky.feed.post&quot;,
+  &quot;record&quot;: {
+    &quot;$type&quot;: &quot;app.bsky.feed.post&quot;,
+    &quot;text&quot;: &quot;your post here&quot;,
+    &quot;createdAt&quot;: &quot;2026-05-11T12:00:00Z&quot;
   }
 }</code></pre>
-                    <p>Creating a new session on every post means there's no persistent token to store or refresh. App
-                        passwords are long-lived; the session they generate is ephemeral. This makes the integration
-                        stateless: if the server restarts between posts, nothing breaks. The <code>$type</code> field
-                        and the ISO <code>createdAt</code> are required by the protocol; omitting either produces a
-                        validation error.</p>
-                    <h2 id="threads-the-two-step-dance">Threads: the two-step dance</h2>
-                    <aside class="blog-aside">
-                        <p>Threads was by far the most annoying to set up.
-                            There were multiple steps and it was generally not very well-documented.
-                            My biggest problem is the lack of clarity around what was under Meta's jurisdiction vs Instagram and Threads.
-                            My struggles here partly inspired me to write this blog in the first place.
-                        </p>
-                    </aside>
-                    <p>Threads uses Meta's Graph API and requires two requests per post. First you create a
-                        container:</p>
-                    <pre><code>POST /{userId}/threads
+<p>Creating a new session on every post means there is no persistent token to store or refresh. App passwords are long-lived; the session they generate is ephemeral. This makes the integration stateless: if the server restarts between posts, nothing breaks. The <code>$type</code> field and the ISO <code>createdAt</code> are required by the protocol; omitting either produces a validation error.</p>
+<h2 id="threads-the-two-step-dance">Threads: the two-step dance</h2>
+<aside class="blog-aside">
+<p>Threads was by far the most annoying to set up. There were multiple steps and it was generally not very well-documented. My biggest problem was the lack of clarity around what was under Meta&#x27;s jurisdiction vs Instagram and Threads. My struggles here partly inspired me to write this blog in the first place.</p>
+</aside>
+<p>Threads uses Meta&#x27;s Graph API and requires two requests per post. First I create a container:</p>
+<pre><code>POST /{userId}/threads
 media_type=TEXT&amp;text=your+post+here&amp;access_token={token}</code></pre>
-                    <p>That returns a creation ID. Then you publish it:</p>
-                    <pre><code>POST /{userId}/threads_publish
+<p>That returns a creation ID. Then I publish it:</p>
+<pre><code>POST /{userId}/threads_publish
 creation_id={creationId}&amp;access_token={token}</code></pre>
-                    <p>The two-step design apparently exists to support future batch operations or pre-scheduling, but
-                        for plain text posts it's just extra latency. The more annoying thing is the access token: it's
-                        long-lived but expires after roughly 60 days, and you have to refresh it proactively. Of the
-                        three integrations, Threads is the one I have to think about the most because of that expiry.
-                        The refresh endpoint is simple — a GET request with your current token — but it's a maintenance
-                        task that the others don't require.</p>
-                    <h1 id="non-blocking-syndication">Non-blocking syndication</h1>
-                    <p>Here's where the shared-hosting constraint got interesting.</p>
-                    <p>The full syndication chain — Gemini routing plus a social media API call — can take a few
-                        seconds. If I block the HTTP response on all of that, posting feels slow even though the actual
-                        write succeeded before any of it started. The fix is to respond to the client as soon as the
-                        database write is done, then syndicate afterwards.</p>
-                    <p>In PHP-FPM, which is what cPanel runs, there's a function called
-                        <code>fastcgi_finish_request()</code> that flushes the HTTP response to the client and closes
-                        the connection while letting the PHP process continue executing. Combined with <code>ignore_user_abort(true)</code>
-                        at the top of the file, this gives you a clean "respond now, finish work later" pattern:</p>
-                    <pre><code>$postId = (int)$pdo->lastInsertId();
+<p>The two-step design apparently exists to support future batch operations or pre-scheduling, but for plain text posts it is just extra latency. The more annoying thing is the access token: it is long-lived but expires after roughly 60 days, and I have to refresh it proactively. Of the three integrations, Threads is the one I have to think about the most because of that expiry. The refresh endpoint is simple - a <code>GET</code> request with my current token - but it is a maintenance task the others do not require.</p>
+<h1 id="non-blocking-syndication">Non-blocking syndication</h1>
+<p>Here&#x27;s where the shared-hosting constraint got interesting.</p>
+<p>The full syndication chain - Gemini routing plus a social media API call - can take a few seconds. If I block the HTTP response on all of that, posting feels slow even though the actual write succeeded before any of it started. The fix is to respond to the client as soon as the database write is done, then syndicate afterward.</p>
+<p>In PHP-FPM, which is what cPanel runs, there is a function called <code>fastcgi_finish_request()</code> that flushes the HTTP response to the client and closes the connection while letting the PHP process continue executing. Combined with <code>ignore_user_abort(true)</code> at the top of the file, this gives me a clean &quot;respond now, finish work later&quot; pattern:</p>
+<pre><code>$postId = (int)$pdo-&gt;lastInsertId();
 
 http_response_code(201);
-header('Content-Type: application/json');
-$responseJson = json_encode(["ok" => true, "id" => $postId, "syndication" => "pending"]);
-header('Content-Length: ' . strlen($responseJson));
+header(&#x27;Content-Type: application/json&#x27;);
+$responseJson = json_encode([&quot;ok&quot; =&gt; true, &quot;id&quot; =&gt; $postId, &quot;syndication&quot; =&gt; &quot;pending&quot;]);
+header(&#x27;Content-Length: &#x27; . strlen($responseJson));
 echo $responseJson;
 
-if (function_exists('fastcgi_finish_request')) {
+if (function_exists(&#x27;fastcgi_finish_request&#x27;)) {
     fastcgi_finish_request(); // client gets their 201 here
 } else {
     ob_flush();
@@ -328,46 +159,19 @@ if (function_exists('fastcgi_finish_request')) {
 
 run_syndication_safely($body, $postId); // runs after the client is gone
 exit;</code></pre>
-                    <p>The <code>Content-Length</code> header is important: without it, some proxies and clients will
-                        buffer the response and wait for the connection to close before delivering it, defeating the
-                        whole point. Setting it explicitly tells the client exactly when the response body ends, so it
-                        can process the response without waiting for the underlying connection to drop.</p>
-                    <p>The client sees an instant 201. Gemini and the social platforms run in whatever time they take.
-                        From the outside it feels like a fast write; the syndication is genuinely invisible.</p>
-                    <h1 id="the-frontend">The frontend</h1>
-                    <aside class="blog-aside">
-                        <p>This section is a placeholder — I'll write it up properly once I've had more time with the
-                            frontend code.</p>
-                    </aside>
-                    <p>The public-facing side of Fwitter is a read-only infinite-scroll feed at <a href="/fwitter/">/fwitter/</a>.
-                        Posts are fetched from the API in pages of 20 using an <code>IntersectionObserver</code> that
-                        watches a sentinel element at the bottom of the feed. When the sentinel enters the viewport, the
-                        next page loads. The feed is purely chronological, most recent first, with relative timestamps
-                        ("2 hours ago") computed client-side from the ISO strings the API returns.</p>
-                    <p>More details on the frontend implementation to come.</p>
-                    <h1 id="reflections">Reflections</h1>
-                    <p>A few things stand out after building and running this for a while.</p>
-                    <p>The AI routing decision is the most interesting thing in the whole stack. Not because it's
-                        technically impressive — it's a classification call with a 16-token output — but because it
-                        changes how I write. Knowing that the content itself will determine where a post lands makes me
-                        think differently about each one. I'm not asking "where should I put this?" I'm asking "what
-                        kind of post is this?" That's a better question.</p>
-                    <p>The database-first philosophy turned out to be load-bearing in ways I didn't fully anticipate.
-                        There have been a few times where syndication failed silently — Gemini returned something
-                        unexpected, a platform was briefly down — and I didn't notice for days because my posts were
-                        still there on Fwitter. The social platforms are nice to have, but I genuinely don't depend on
-                        them anymore in the way I used to.</p>
-                    <p>The shared-hosting constraint was probably the most clarifying technical decision, even though it
-                        wasn't really a decision — it's just where the site lives. Not having access to a queue or
-                        background workers forced me to think carefully about what actually needs to block on what.
-                        <code>fastcgi_finish_request()</code> is one of those PHP features that feels like a hack until
-                        you realize it's exactly the right tool for this use case. A queue would have been more correct
-                        in a distributed sense; this is more correct for the actual problem.</p>
-                    <p>The thing I'd change: I'd add a <code>syndication_status</code> column to the database and log
-                        the platform result back after each syndication run. Right now, whether a post made it to X or
-                        Bluesky is observable only through <code>error_log</code>, which is not a great debugging
-                        experience. Tracking status in the schema would make it easy to build a small retry UI and would
-                        give me better visibility into which platform is flaky and when.</p>
+<p>The <code>Content-Length</code> header is important: without it, some proxies and clients will buffer the response and wait for the connection to close before delivering it, defeating the whole point. Setting it explicitly tells the client exactly when the response body ends, so it can process the response without waiting for the underlying connection to drop.</p>
+<p>The client sees an instant 201. Gemini and the social platforms run in whatever time they take. From the outside it feels like a fast write; the syndication is genuinely invisible.</p>
+<h1 id="the-frontend">The frontend</h1>
+<aside class="blog-aside">
+<p>This section is a placeholder - I&#x27;ll write it up properly once I&#x27;ve had more time with the frontend code.</p>
+</aside>
+<p>The public-facing side of Fwitter is a read-only infinite-scroll feed at <a href="/fwitter/">/fwitter/</a>. Posts are fetched from the API in pages of 20 using an <code>IntersectionObserver</code> that watches a sentinel element at the bottom of the feed. When the sentinel enters the viewport, the next page loads. The feed is purely chronological, most recent first, with relative timestamps (&quot;2 hours ago&quot;) computed client-side from the ISO strings the API returns.</p>
+<p>More details on the frontend implementation to come.</p>
+<h1 id="reflections">Reflections</h1>
+<p>A few things stand out after building and running this for a while.</p>
+<p>The AI routing decision is the most interesting thing in the whole stack. Knowing that the content itself will determine where a post lands makes me think differently about each one.</p>
+<p>The shared-hosting constraint was probably the most clarifying technical decision, even though it was not really a decision - it is just where the site lives. Not having access to a queue or background workers forced me to think carefully about what actually needs to block on what. A queue would have been more correct in a distributed sense; this is more correct for my simple use case.</p>
+<p>The thing I&#x27;d change: I&#x27;d add a <code>syndication_status</code> column to the database and log the platform result back after each syndication run. Right now, whether a post made it to X or Bluesky is observable only through <code>error_log</code>, which is not a great debugging experience. Tracking status in the schema would make it easy to build a small retry UI and would give me better visibility into which platform is flaky and when.</p>
                 </article>
 
                 <p class="blog-kicker">

@@ -1,5 +1,16 @@
 [
   {
+    "title": "Building Fwitter: a personal microblog with AI-powered social syndication",
+    "slug": "building-fwitter",
+    "date": "2026-05-11",
+    "excerpt": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.",
+    "tags": [
+      "engineering",
+      "php",
+      "ai"
+    ]
+  },
+  {
     "title": "AI coding agents suck at security",
     "slug": "ai-coding-agents-suck-at-security",
     "date": "2026-04-2",
@@ -13,8 +24,8 @@
     ]
   },
   {
-    "title": "Websites Were Made to Be Scraped",
-    "slug": "websites-were-made-to-be-scraped",
+    "title": "Websites are made to be scraped",
+    "slug": "websites-are-made-to-be-scraped",
     "date": "2026-03-18",
     "excerpt": "You either die a hero, or live long enough to scrape data. This is how I like to do it.",
     "tags": [
