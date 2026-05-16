@@ -1,0 +1,24 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SFTP
+        uses: pressidium/lftp-mirror-action@v1
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          port: ${{ secrets.SFTP_PORT }}
+          user: ${{ secrets.SFTP_USER }}
+          pass: ${{ secrets.SFTP_PASS }}
+          localDir: "./"
+          remoteDir: ${{ secrets.SFTP_TARGET_DIR }}
+          reverse: true
+          options: "--verbose --exclude-glob .git* --exclude .github/ --exclude node_modules/ --exclude .DS_Store"
