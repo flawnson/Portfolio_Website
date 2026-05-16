@@ -42,25 +42,26 @@ CREATE TABLE micro_posts (
 );
 ```
 
-That's it. No syndication status column, no external platform IDs stored back, no retry queue. Syndication results are logged to `error_log` for debugging, but they are not persisted in the schema. This might change if I add structured retry tracking, but the simplicity of not caring about syndication at the schema level has been worth it. I have never needed to query "which posts failed to publish to Bluesky" - and if I did, I would add the column then.
-
-Using `BIGINT UNSIGNED` for the ID is a habit. With `AUTO_INCREMENT` it does not matter in practice, but IDs leak information about volume and I'd rather not have the ID space cap out unexpectedly if this runs for a long time. The `is_published` flag exists for future soft-delete support but is not currently used in any query.
+Syndication results are logged to `error_log` for debugging, but they are not persisted in the schema. This might change if I add structured retry tracking, but the simplicity of not caring about syndication at the schema level has been worth it. I have never needed to query "which posts failed to publish to Bluesky" - and if I did, I would add the column then.
 
 # The API
 
-The backend is a single PHP file. I am hosting on cPanel with shared PHP hosting, which means no background workers, no job queues, no Redis. Just PHP with PDO and curl.
+The backend is a single PHP file. I'm hosting on cPanel, which is Just PHP with PDO and curl.
 
 Authentication is an admin token passed as an `X-Admin-Token` header, compared with `hash_equals()` to prevent timing attacks. The API supports `GET` for reading the feed and `POST` for creating posts. `GET` is public; `POST` requires the token.
 
 CORS is handled with an explicit allowlist: `flawnson.com` and localhost variants for development. The `Vary: Origin` header is set so caches do not serve one origin's response to another.
 
-Pagination on the read side uses a `before_id` cursor rather than offset-based pages. Offset pagination is simpler to implement but gets unstable under concurrent writes: if a new post arrives between page 1 and page 2, offset-based pagination either skips an item or shows it twice. ID cursors do not have this problem. The query fetches `limit + 1` rows - if I get back more than `limit`, there is a next page, and I return the last ID as the cursor.
+Pagination uses a `before_id` cursor rather than offset-based pages. Offset pagination is simpler to implement but gets unstable under concurrent writes: if a new post arrives between page 1 and page 2, offset-based pagination either skips an item or shows it twice. ID cursors do not have this problem. The query fetches `limit + 1` rows - if I get back more than `limit`, there is a next page, and I return the last ID as the cursor.
 
 # Routing with Gemini
 
-Deciding which platform to post to is the most interesting part of the whole system.
+Deciding which platform to post to is the fun part.
 
-X, Bluesky, and Threads have genuinely different characters. X rewards sharp, opinion-dense takes - startup energy, systems thinking, technical insight in as few words as possible. Bluesky has a softer, more reflective community: creative work, books, thoughtful observations, writing that is a little more comfortable being uncertain. Threads is casual and warm - fitness updates, internet culture, relatable moments, the kind of thing I'd say to a friend.
+X, Bluesky, and Threads have different personalities:
+- X rewards sharp, opinion-dense takes - startup energy, systems thinking, technical insight in as few words as possible.
+- Bluesky has a softer, more reflective community: creative work, books, thoughtful observations, writing that is a little more comfortable being uncertain.
+- Threads is casual and warm - fitness updates, internet culture, relatable moments, the kind of thing I'd say to a friend.
 
 Posting the same thing verbatim to all three is suboptimal and would just be redundant. Having different posts on each platform gives readers incentive to check out my profile on other sites. And of course, if you just want to see everything I say, you can always just go to my website for the [full feed](https://flawnson.com/fwitter/).
 
@@ -86,7 +87,7 @@ No punctuation. No explanation. No extra words.
 
 The model is `gemini-2.5-flash` with temperature 0 (deterministic), thinking budget 0 (fast and cheap on 2.5 models), and max output tokens of 16. The response is validated against the three expected values; anything else is treated as a routing failure and syndication is skipped.
 
-This is one of the easiest AI integrations I've built because it is not trying to generate anything creative - it is just making a classification decision that I'd otherwise have to make manually. The cost per call is a fraction of a cent. The latency is under a second. And it gets the routing right often enough that I rarely notice when it does not. Occasionally I'll see a post get routed somewhere I didn't expect, but it's never blatantly wrong. At some point I'll likely make some prompt adjustments to have the model optimize for and adapt to the current culture of each platform to improve the performance of the routing.
+This is one of the easiest AI integrations I've built because it's not trying to generate anything creative - it's just making a classification decision that I'd otherwise have to make manually. The cost per call is a fraction of a cent. The latency is under a second. And it gets the routing right often enough that I rarely notice when it does not. Occasionally I'll see a post get routed somewhere I didn't expect, but it's never blatantly wrong. At some point I'll likely make some prompt adjustments to have the model optimize for and adapt to the current culture of each platform to improve the performance of the routing.
 
 <aside class="blog-aside">
 
