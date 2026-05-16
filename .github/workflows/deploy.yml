@@ -46,7 +46,7 @@ jobs:
           SFTP_PASS: ${{ secrets.SFTP_PASS }}
           SFTP_TARGET_DIR: ${{ secrets.SFTP_TARGET_DIR }}
         run: |
-          lftp -u "$SFTP_USER","$SFTP_PASS" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<'EOF'
+          lftp -u "$SFTP_USER","$SFTP_PASS" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<EOF
           set net:timeout 20
           set net:max-retries 2
           set net:reconnect-interval-base 5
