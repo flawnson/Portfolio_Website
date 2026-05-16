@@ -7,24 +7,35 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy via SFTP
-        uses: pressidium/lftp-mirror-action@v1
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          port: ${{ secrets.SFTP_PORT }}
-          user: ${{ secrets.SFTP_USER }}
-          pass: ${{ secrets.SFTP_PASS }}
-          localDir: "./"
-          remoteDir: ${{ secrets.SFTP_TARGET_DIR }}
-          reverse: true
-          onlyNewer: true
-          ignoreFile: |
-            .git/
-            .github/
-            .idea/
-            node_modules/
-            .DS_Store
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Deploy via SFTP (direct lftp)
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASS: ${{ secrets.SFTP_PASS }}
+          SFTP_TARGET_DIR: ${{ secrets.SFTP_TARGET_DIR }}
+        run: |
+          lftp -u "$SFTP_USER","$SFTP_PASS" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<'EOF'
+          set net:timeout 20
+          set net:max-retries 2
+          set net:reconnect-interval-base 5
+          set net:reconnect-interval-max 20
+          set sftp:auto-confirm yes
+          set xfer:clobber on
+          mirror -R --only-newer --verbose=2 \
+            --exclude-glob .git* \
+            --exclude .github/ \
+            --exclude .idea/ \
+            --exclude node_modules/ \
+            --exclude .DS_Store \
+            ./ "$SFTP_TARGET_DIR"
+          bye
+          EOF
