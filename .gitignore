@@ -8,3 +8,8 @@ public_html/api/microblog-config.php
 /.idea/modules.xml
 /.idea/Portfolio_Website.iml
 /.idea/vcs.xml
+.github_actions_secrets
+node_modules/
+__pycache__/
+playwright-report/
+test-results/
