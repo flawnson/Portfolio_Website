@@ -206,9 +206,15 @@ This section is a placeholder - I'll write it up properly once I've had more tim
 
 </aside>
 
-The public-facing side of Fwitter is a read-only infinite-scroll feed at [/fwitter/](/fwitter/). Posts are fetched from the API in pages of 20 using an `IntersectionObserver` that watches a sentinel element at the bottom of the feed. When the sentinel enters the viewport, the next page loads. The feed is purely chronological, most recent first, with relative timestamps ("2 hours ago") computed client-side from the ISO strings the API returns.
+The frontend is a small SwiftUI app I vibe coded. It's far from a feature rich editor; it's a low-friction (and low-effort) posting surface.
 
-More details on the frontend implementation to come.
+The main screen is a composer plus a feed. The composer is a `TextEditor` with a character count and a Post button. The feed is a plain SwiftUI `List` of recent posts with timestamps, copy support, and a few admin actions. Since this is my private app, it sends the same `X-Admin-Token` header the PHP API expects, which lets me create, edit, and delete posts from my phone.
+
+The most useful feature is offline support. The app stores the current draft, cached posts, and pending creates in `UserDefaults`. If I post without a connection, the app gives the post a temporary local ID, shows it immediately as `Pending`, and queues it for later. An `NWPathMonitor` watches for the network to come back, then syncs pending posts before refreshing the feed.
+
+The MySQL database is still the source of truth. The phone can temporarily pretend a post exists, but once the API accepts it, the normal flow takes over: database write first, then Gemini routing, then syndication.
+
+The Swift app is my private write surface while the website is my public archive.
 
 # Reflections
 
