@@ -21,4 +21,10 @@ jobs:
           localDir: "./"
           remoteDir: ${{ secrets.SFTP_TARGET_DIR }}
           reverse: true
-          options: "--verbose --exclude-glob .git* --exclude .github/ --exclude node_modules/ --exclude .DS_Store"
+          onlyNewer: true
+          ignoreFile: |
+            .git/
+            .github/
+            .idea/
+            node_modules/
+            .DS_Store
