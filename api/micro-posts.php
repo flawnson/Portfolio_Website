@@ -195,6 +195,22 @@ function gemini_response_text(array $response): string {
     return strtolower(trim($text));
 }
 
+function gemini_response_raw_text(array $response): string {
+    $parts = $response['json']['candidates'][0]['content']['parts'] ?? [];
+    if (!is_array($parts)) {
+        return '';
+    }
+
+    $text = '';
+    foreach ($parts as $part) {
+        if (isset($part['text']) && is_string($part['text'])) {
+            $text .= $part['text'];
+        }
+    }
+
+    return trim($text);
+}
+
 function gemini_response_details(array $response): array {
     $details = [];
 
@@ -403,6 +419,101 @@ function route_micro_post(string $body): ?string {
     return ($result['ok'] ?? false) ? (string)$result['platform'] : null;
 }
 
+function gemini_resolve_mentions(string $body, string $platform, string $apiKey): ?string {
+    $modelName = config_string('geminiModel', 'gemini-2.5-flash');
+    $model = rawurlencode($modelName);
+
+    $handleExamples = [
+        'x'       => '@username (e.g. @sama, @netflix)',
+        'bluesky' => '@handle.bsky.social (e.g. @bsky.app, @bluesky.social)',
+        'threads' => '@username (e.g. @zuck, @netflix)',
+    ];
+    $handleFormat = $handleExamples[$platform] ?? '@username';
+
+    $prompt = "You are enhancing a social media post for {$platform} by adding @ mentions for recognizable people and companies.\n\n"
+        . "Post to enhance:\n{$body}\n\n"
+        . "Instructions:\n"
+        . "1. Identify any named people, companies, or organizations mentioned in the post.\n"
+        . "2. Use Google Search to find their official {$platform} account handle.\n"
+        . "3. Only substitute if you have HIGH confidence this is the correct, official account (not a parody, fan account, or unofficial one).\n"
+        . "4. Handle format for {$platform}: {$handleFormat}\n"
+        . "5. Replace the entity name in the post text with the @ handle.\n\n"
+        . "Return ONLY valid JSON with no markdown, no code fences, no extra text:\n"
+        . "{\"resolved\": \"<full post with substitutions applied>\", \"substitutions\": [{\"original\": \"name\", \"handle\": \"@handle\", \"confidence\": \"high\"}]}\n\n"
+        . "If you find no entities, or cannot confirm any with high confidence, return:\n"
+        . "{\"resolved\": null, \"substitutions\": []}\n\n"
+        . "Critical rules:\n"
+        . "- Only use \"high\" confidence if search results clearly confirm an official account\n"
+        . "- Never guess; if a search doesn't unambiguously confirm the official account, skip it\n"
+        . "- Skip ambiguous names that could refer to multiple entities (e.g. \"John\", \"Apple\" as a fruit)\n"
+        . "- Keep all other post text exactly as written";
+
+    $generationConfig = [
+        'temperature'     => 0,
+        'maxOutputTokens' => 512,
+    ];
+
+    if (strpos($modelName, '2.5') !== false) {
+        $generationConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+    }
+
+    $response = http_json_request(
+        "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent",
+        ['x-goog-api-key: ' . $apiKey],
+        [
+            'contents'         => [['parts' => [['text' => $prompt]]]],
+            'tools'            => [['google_search' => new stdClass()]],
+            'generationConfig' => $generationConfig,
+        ],
+        config_int('geminiTimeoutSeconds', 30, 1, 60)
+    );
+
+    if (!($response['ok'] ?? false)) {
+        error_log("Fwitter mention resolution API call failed: " . json_encode(http_result_summary($response), JSON_UNESCAPED_SLASHES));
+        return null;
+    }
+
+    $rawText = gemini_response_raw_text($response);
+    if ($rawText === '') {
+        return null;
+    }
+
+    $rawText = preg_replace('/^```(?:json)?\s*/i', '', $rawText);
+    $rawText = preg_replace('/\s*```$/i', '', $rawText);
+    $rawText = trim($rawText ?? '');
+
+    $parsed = json_decode($rawText, true);
+    if (!is_array($parsed)) {
+        error_log("Fwitter mention resolution: unparseable JSON: " . truncate_text($rawText));
+        return null;
+    }
+
+    $resolved = $parsed['resolved'] ?? null;
+    if (!is_string($resolved) || trim($resolved) === '') {
+        return null;
+    }
+
+    return $resolved;
+}
+
+function resolve_mentions_for_syndication(string $body, string $platform): string {
+    $apiKey = config_string('geminiApiKey');
+    if ($apiKey === '') {
+        return $body;
+    }
+
+    try {
+        $resolved = gemini_resolve_mentions($body, $platform, $apiKey);
+        if ($resolved !== null && $resolved !== $body) {
+            error_log("Fwitter mention resolution applied for {$platform}: " . json_encode(['original' => $body, 'resolved' => $resolved], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+        return $resolved ?? $body;
+    } catch (Throwable $e) {
+        error_log("Fwitter mention resolution crashed for {$platform}: " . $e->getMessage());
+        return $body;
+    }
+}
+
 function publish_to_bluesky(string $body): array {
     $handle = config_string('blueskyHandle');
     $password = config_string('blueskyAppPassword');
@@ -559,7 +670,8 @@ function syndicate_micro_post(string $body, int $postId): array {
     }
 
     $platform = (string)$route['platform'];
-    $result = publish_to_platform($platform, $body);
+    $syndicationBody = resolve_mentions_for_syndication($body, $platform);
+    $result = publish_to_platform($platform, $syndicationBody);
     $summary = http_result_summary($result);
 
     if (!($result['ok'] ?? false)) {
@@ -658,6 +770,12 @@ function handle_syndication_debug(): void {
         $platform = (string)$route['platform'];
     }
 
+    $resolvedBody = resolve_mentions_for_syndication($body, $platform);
+    $debug['mentions'] = [
+        'changed'       => $resolvedBody !== $body,
+        'resolved_body' => $resolvedBody !== $body ? $resolvedBody : null,
+    ];
+
     if (!$publish) {
         $debug['publish'] = [
             'skipped' => true,
@@ -669,7 +787,7 @@ function handle_syndication_debug(): void {
 
     $debug['publish'] = [
         'platform' => $platform,
-        'result' => http_result_summary(publish_to_platform($platform, $body), true),
+        'result'   => http_result_summary(publish_to_platform($platform, $resolvedBody), true),
     ];
 
     respond(200, $debug);
