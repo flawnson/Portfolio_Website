@@ -100,15 +100,20 @@ function renderMicroPosts(posts) {
         return;
     }
 
+    const platformLabels = { x: "X", bluesky: "Bluesky", threads: "Threads", linkedin: "LinkedIn" };
+
     root.innerHTML = posts.map((post) => {
         const safeBody = linkify(escapeHtml(post.body));
         const createdAt = new Date(post.created_at.replace(" ", "T"));
         const relativeTime = formatRelativeTime(createdAt);
+        const platforms = Array.isArray(post.syndicated_platforms) && post.syndicated_platforms.length
+            ? `<span style="opacity:0.68;font-size:inherit;">${post.syndicated_platforms.map((p) => platformLabels[p] || p).join(", ")}</span>`
+            : "";
 
         return `
             <article class="micro-post" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
                 <p style="white-space: pre-wrap; margin-bottom: 0.4rem;">${safeBody}</p>
-                <small>${relativeTime}</small>
+                <small style="display:flex;justify-content:space-between;align-items:center;"><span>${relativeTime}</span>${platforms}</small>
             </article>
         `;
     }).join("");

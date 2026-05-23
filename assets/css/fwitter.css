@@ -60,9 +60,15 @@
 }
 
 .fwitter-post-meta {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 1.3rem;
     opacity: 0.68;
+}
+
+.fwitter-post-platforms {
+    opacity: 0.85;
 }
 
 .feed-status {

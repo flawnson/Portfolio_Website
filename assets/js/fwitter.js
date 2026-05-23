@@ -103,6 +103,8 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
     }
 }
 
+const PLATFORM_LABELS = { x: "X", bluesky: "Bluesky", threads: "Threads", linkedin: "LinkedIn" };
+
 function buildPostElement(post) {
     const article = document.createElement("article");
     article.className = "fwitter-post";
@@ -113,7 +115,19 @@ function buildPostElement(post) {
 
     const meta = document.createElement("small");
     meta.className = "fwitter-post-meta";
-    meta.textContent = formatRelativeTime(post.created_at);
+
+    const timeSpan = document.createElement("span");
+    timeSpan.textContent = formatRelativeTime(post.created_at);
+    meta.appendChild(timeSpan);
+
+    if (Array.isArray(post.syndicated_platforms) && post.syndicated_platforms.length) {
+        const platformsSpan = document.createElement("span");
+        platformsSpan.className = "fwitter-post-platforms";
+        platformsSpan.textContent = post.syndicated_platforms
+            .map((p) => PLATFORM_LABELS[p] || p)
+            .join(", ");
+        meta.appendChild(platformsSpan);
+    }
 
     article.appendChild(body);
     article.appendChild(meta);

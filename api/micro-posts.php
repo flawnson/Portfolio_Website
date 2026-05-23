@@ -775,9 +775,21 @@ function syndicate_micro_post(string $body, int $postId): array {
     ];
 }
 
-function run_syndication_safely(string $body, int $postId): array {
+function run_syndication_safely(string $body, int $postId, PDO $pdo): array {
     try {
-        return syndicate_micro_post($body, $postId);
+        $result = syndicate_micro_post($body, $postId);
+
+        if (!empty($result['platforms'])) {
+            $platformStr = implode(',', $result['platforms']);
+            try {
+                $stmt = $pdo->prepare("UPDATE micro_posts SET syndicated_platforms = :platforms WHERE id = :id LIMIT 1");
+                $stmt->execute([':platforms' => $platformStr, ':id' => $postId]);
+            } catch (Throwable $e) {
+                error_log("Fwitter failed to write syndicated_platforms for post {$postId}: " . $e->getMessage());
+            }
+        }
+
+        return $result;
     } catch (Throwable $e) {
         error_log("Fwitter syndication crashed for post {$postId}: " . $e->getMessage());
         return [
@@ -907,7 +919,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $beforeId = isset($_GET["before_id"]) ? (int) $_GET["before_id"] : 0;
 
     $sql = "
-        SELECT id, body, created_at
+        SELECT id, body, syndicated_platforms, created_at
         FROM micro_posts
     ";
 
@@ -934,9 +946,13 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     }
 
     $posts = array_map(static function (array $post): array {
+        $platforms = isset($post['syndicated_platforms']) && $post['syndicated_platforms'] !== null
+            ? explode(',', (string) $post['syndicated_platforms'])
+            : null;
         return [
             'id' => (int) $post['id'],
             'body' => (string) $post['body'],
+            'syndicated_platforms' => $platforms,
             'created_at' => (string) $post['created_at'],
         ];
     }, $posts);
@@ -1005,7 +1021,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         flush();
     }
 
-    run_syndication_safely($body, $postId);
+    run_syndication_safely($body, $postId, $pdo);
     exit;
 }
 
