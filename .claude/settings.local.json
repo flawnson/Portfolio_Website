@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(grep -E '\\\\.\\(js|ts\\)$')",
-      "Bash(python -m json.tool)"
+      "Bash(python -m json.tool)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

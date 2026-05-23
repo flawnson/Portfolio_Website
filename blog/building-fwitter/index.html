@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Building Fwitter: a personal microblog with AI-powered social syndication | Flawnson</title>
-    <meta name="description" content="How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.">
+    <meta name="description" content="How I built a microblog on my own domain that automatically routes posts to X, Bluesky, Threads, and LinkedIn using Gemini AI.">
     <link rel="canonical" href="https://flawnson.com/blog/building-fwitter/">
     <link rel="icon" type="image/png" href="/assets/images/Favicon.png">
     <link rel="stylesheet" href="/assets/css/bootstrap.css">
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="/assets/css/blog.css">
-    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "BlogPosting", "@id": "https://flawnson.com/blog/building-fwitter/#article", "headline": "Building Fwitter: a personal microblog with AI-powered social syndication", "description": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.", "image": ["https://flawnson.com/assets/images/profile%202.jpg"], "author": {"@type": "Person", "name": "Flawnson Tong", "url": "https://flawnson.com/#person"}, "publisher": {"@type": "Organization", "name": "Flawnson", "url": "https://flawnson.com", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}, "datePublished": "2026-05-11", "dateModified": "2026-05-11", "mainEntityOfPage": "https://flawnson.com/blog/building-fwitter/", "keywords": ["engineering", "php", "ai"]}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://flawnson.com/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://flawnson.com/blog/"}, {"@type": "ListItem", "position": 3, "name": "Building Fwitter: a personal microblog with AI-powered social syndication", "item": "https://flawnson.com/blog/building-fwitter/"}]}, {"@type": "Organization", "@id": "https://flawnson.com/#organization", "name": "Flawnson", "url": "https://flawnson.com/", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}]}</script>
+    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "BlogPosting", "@id": "https://flawnson.com/blog/building-fwitter/#article", "headline": "Building Fwitter: a personal microblog with AI-powered social syndication", "description": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, Threads, and LinkedIn using Gemini AI.", "image": ["https://flawnson.com/assets/images/profile%202.jpg"], "author": {"@type": "Person", "name": "Flawnson Tong", "url": "https://flawnson.com/#person"}, "publisher": {"@type": "Organization", "name": "Flawnson", "url": "https://flawnson.com", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}, "datePublished": "2026-05-11", "dateModified": "2026-05-11", "mainEntityOfPage": "https://flawnson.com/blog/building-fwitter/", "keywords": ["engineering", "php", "ai"]}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://flawnson.com/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://flawnson.com/blog/"}, {"@type": "ListItem", "position": 3, "name": "Building Fwitter: a personal microblog with AI-powered social syndication", "item": "https://flawnson.com/blog/building-fwitter/"}]}, {"@type": "Organization", "@id": "https://flawnson.com/#organization", "name": "Flawnson", "url": "https://flawnson.com/", "logo": {"@type": "ImageObject", "url": "https://flawnson.com/assets/images/Favicon.png"}}]}</script>
 </head>
 <body>
 <div class="container-fluid blog-shell">
@@ -30,7 +30,7 @@
                     <div class="blog-meta">
                         <span class="blog-tags"><span class="blog-tag">engineering</span><span class="blog-tag">php</span><span class="blog-tag">ai</span></span>
                     </div>
-                    <p class="blog-excerpt">How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.</p>
+                    <p class="blog-excerpt">How I built a microblog on my own domain that automatically routes posts to X, Bluesky, Threads, and LinkedIn using Gemini AI.</p>
                 </header>
 
                 <article class="blog-article">
@@ -38,7 +38,7 @@
 <p>Every time I have a Twitter-thought, the activation energy I need to actually open the app, write the post, and publish it feels abnormally high. I&#x27;m not on social media often; I don&#x27;t doomscroll or even upvote/like/&lt;insert your mechanic here&gt; posts, and I almost never leave comments or replies.</p>
 <p>Then there is the fact that these platforms have a clear bias toward certain sentiments, styles, and opinions. How do I, as a social-media minimalist, navigate these treacherous waters and build my social capital?</p>
 <p>And of course, there&#x27;s always the risk of opening the app and getting sucked into reading posts and being a &quot;consumer&quot; instead of a &quot;producer&quot;.</p>
-<p>So to fix all my problems, I built <a href="/fwitter/">Fwitter</a>: a personal microblog that lives on my domain, stores everything in my own database, and syndicates to social platforms automatically. The interesting part is the routing: instead of cross-posting the same thing everywhere, I use Gemini (because they have a generous free tier) to decide which single platform each fweet is best suited for, then route the content to that platform using its API.</p>
+<p>So to fix all my problems, I built <a href="/fwitter/">Fwitter</a>: a personal microblog that lives on my domain, stores everything in my own database, and syndicates to social platforms automatically. The interesting part is the routing: instead of cross-posting the same thing everywhere, I use Gemini (because they have a generous free tier) to decide which platform each fweet is best suited for, then route the content to that platform using its API. Most posts go to exactly one platform; occasionally a post fits two audiences and gets syndicated to both.</p>
 <p>Here&#x27;s how it&#x27;s built.</p>
 <nav class="blog-toc" aria-label="Table of contents">
   <ol class="blog-toc-list">
@@ -50,14 +50,16 @@
 <li class="blog-toc-item blog-toc-level-2"><a href="#x-oauth-10a">X: OAuth 1.0a</a></li>
 <li class="blog-toc-item blog-toc-level-2"><a href="#bluesky-at-protocol">Bluesky: AT Protocol</a></li>
 <li class="blog-toc-item blog-toc-level-2"><a href="#threads-the-two-step-dance">Threads: the two-step dance</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#linkedin-ugc-posts-api">LinkedIn: UGC Posts API</a></li>
 <li class="blog-toc-item blog-toc-level-1"><a href="#non-blocking-syndication">Non-blocking syndication</a></li>
 <li class="blog-toc-item blog-toc-level-1"><a href="#the-frontend">The frontend</a></li>
+<li class="blog-toc-item blog-toc-level-2"><a href="#app-updates">App updates</a></li>
 <li class="blog-toc-item blog-toc-level-1"><a href="#reflections">Reflections</a></li>
   </ol>
 </nav>
 <h1 id="the-design-philosophy">The design philosophy</h1>
 <p>When I started building Fwitter, I hoped it would reduce the friction of posting my thoughts online more. To that end, it has succeeded beyond my expectations, and I think it is safe to say I have developed a habit of opening and posting every day. This meant I needed my own database, which was easy to set up on MySQL, cPanel&#x27;s default SQL DB. Even now, it is the source of truth for my posts, and routing only happens after the post has successfully been written to the database.</p>
-<p>In Fwitter, a post exists the moment it is written to my database. Everything after that - Gemini routing, publishing to X, publishing to Bluesky, publishing to Threads - is bonus. Those operations are fire-and-forget. If they fail, the post still exists. If they succeed, great. Social platforms are distribution, not storage.</p>
+<p>In Fwitter, a post exists the moment it is written to my database. Everything after that - Gemini routing, publishing to X, publishing to Bluesky, publishing to Threads, publishing to LinkedIn - is bonus. Those operations are fire-and-forget. If they fail, the post still exists. If they succeed, great. Social platforms are distribution, not storage.</p>
 <p>This also means the system degrades gracefully. If Gemini is down, the post still gets saved and syndication is skipped. If the X API is flaky, the post still exists on Fwitter. The only failure mode that matters is the database write.</p>
 <h1 id="the-database">The database</h1>
 <p>The schema is deliberately minimal:</p>
@@ -75,25 +77,26 @@
 <p>Pagination uses a <code>before_id</code> cursor rather than offset-based pages. Offset pagination is simpler to implement but gets unstable under concurrent writes: if a new post arrives between page 1 and page 2, offset-based pagination either skips an item or shows it twice. ID cursors do not have this problem. The query fetches <code>limit + 1</code> rows - if I get back more than <code>limit</code>, there is a next page, and I return the last ID as the cursor.</p>
 <h1 id="routing-with-gemini">Routing with Gemini</h1>
 <p>Deciding which platform to post to is the fun part.</p>
-<p>X, Bluesky, and Threads have different personalities:</p>
-<ul><li>X rewards sharp, opinion-dense takes - startup energy, systems thinking, technical insight in as few words as possible.</li><li>Bluesky has a softer, more reflective community: creative work, books, thoughtful observations, writing that is a little more comfortable being uncertain.</li><li>Threads is casual and warm - fitness updates, internet culture, relatable moments, the kind of thing I&#x27;d say to a friend.</li></ul>
-<p>Posting the same thing verbatim to all three is suboptimal and would just be redundant. Having different posts on each platform gives readers incentive to check out my profile on other sites. And of course, if you just want to see everything I say, you can always just go to my website for the <a href="https://flawnson.com/fwitter/">full feed</a>.</p>
+<p>X, Bluesky, Threads, and LinkedIn all have different personalities:</p>
+<ul><li>X rewards sharp, opinion-dense takes - startup energy, systems thinking, technical insight in as few words as possible.</li><li>Bluesky has a softer, more reflective community: creative work, books, thoughtful observations, writing that is a little more comfortable being uncertain.</li><li>Threads is casual and warm - fitness updates, internet culture, relatable moments, the kind of thing I&#x27;d say to a friend.</li><li>LinkedIn is strictly professional - formally written posts about engineering, software development, or AI/ML that a professional engineer would find directly useful. It triggers rarely.</li></ul>
+<p>Posting the same thing verbatim to all four is suboptimal and would just be redundant. Having different posts on each platform gives readers incentive to check out my profile on other sites. And of course, if you just want to see everything I say, you can always just go to my website for the <a href="https://flawnson.com/fwitter/">full feed</a>.</p>
 <p>But having to think about which platform to post on for every post introduces enough friction that I stop posting. So I gave the routing decision to Gemini.</p>
-<p>The model gets the post&#x27;s text and a short description of each platform&#x27;s character, and it outputs exactly one word:</p>
-<pre><code>You are a content routing agent for a personal microblog.
-Given a post, choose the single best platform for it.
+<p>The model gets the post&#x27;s text and a short description of each platform&#x27;s character, and it outputs one or more comma-separated platform tokens. Single-platform is the default; multi-platform is rare. The only valid multi-platform combination is <code>x,linkedin</code>, for posts that are simultaneously punchy enough for X and professionally substantive enough for LinkedIn:</p>
+<pre><code>You are a routing model. Your ONLY job is to decide which social platform(s)
+a text-only post should be published to.
 
-Platform guide:
-- x: authority, startups, technical ideas, AI, systems thinking, founder energy.
-  Sharp, high-signal, concise.
-- bluesky: creativity, music, books, artistic observations, thoughtful reflection.
-  Curious, nuanced, emotionally honest.
-- threads: lifestyle, fitness, food, internet culture, casual daily life, warm humor.
-  Casual, friendly, cozy.
+Output one or more platform tokens separated by commas. No spaces after commas.
+No punctuation other than commas. No explanation. No quotes. No reasoning.
 
-Output EXACTLY ONE of: x, bluesky, threads
-No punctuation. No explanation. No extra words.</code></pre>
-<p>The model is <code>gemini-2.5-flash</code> with temperature 0 (deterministic), thinking budget 0 (fast and cheap on 2.5 models), and max output tokens of 16. The response is validated against the three expected values; anything else is treated as a routing failure and syndication is skipped.</p>
+Valid tokens: x, bluesky, threads, linkedin
+
+Single-platform output is the default and strongly preferred.
+Multi-platform output should be rare — only when a post genuinely and clearly
+fits two distinct audiences at once.
+The ONLY valid multi-platform combination is: x,linkedin
+
+[platform definitions and tie-breaker rules follow...]</code></pre>
+<p>The model is <code>gemini-2.5-flash</code> with temperature 0 (deterministic), thinking budget 0 (fast and cheap on 2.5 models), and max output tokens of 24. The response is parsed as a comma-separated list, each token validated against the four allowed values; invalid tokens or invalid combinations are treated as a routing failure and syndication is skipped.</p>
 <p>This is one of the easiest AI integrations I&#x27;ve built because it&#x27;s not trying to generate anything creative - it&#x27;s just making a classification decision that I&#x27;d otherwise have to make manually. The cost per call is a fraction of a cent. The latency is under a second. And it gets the routing right often enough that I rarely notice when it does not. Occasionally I&#x27;ll see a post get routed somewhere I didn&#x27;t expect, but it&#x27;s never blatantly wrong. At some point I&#x27;ll likely make some prompt adjustments to have the model optimize for and adapt to the current culture of each platform to improve the performance of the routing.</p>
 <aside class="blog-aside">
 <p>One thing I noticed: giving the model tie-breaker rules helped a lot. Serious or professional -&gt; X. Thoughtful or artistic -&gt; Bluesky. Casual or social -&gt; Threads. Without tie-breakers, borderline posts tended to cluster on X because it is listed first.</p>
@@ -138,6 +141,32 @@ media_type=TEXT&amp;text=your+post+here&amp;access_token={token}</code></pre>
 <pre><code>POST /{userId}/threads_publish
 creation_id={creationId}&amp;access_token={token}</code></pre>
 <p>The two-step design apparently exists to support future batch operations or pre-scheduling, but for plain text posts it is just extra latency. The more annoying thing is the access token: it is long-lived but expires after roughly 60 days, and I have to refresh it proactively. Of the three integrations, Threads is the one I have to think about the most because of that expiry. The refresh endpoint is simple - a <code>GET</code> request with my current token - but it is a maintenance task the others do not require.</p>
+<h2 id="linkedin-ugc-posts-api">LinkedIn: UGC Posts API</h2>
+<p>LinkedIn was the most recent addition and in some ways the most interesting to think about — not because the API is complex, but because the routing criteria had to be much stricter than the other three.</p>
+<p>X, Bluesky, and Threads all accept a fairly wide range of content. LinkedIn does not. Posting casual observations or startup opinions to LinkedIn reads as noise to a professional engineering audience. So the constraint I gave Gemini is tight: only formally written posts about engineering, development, or AI/ML methods qualify. No startup culture, no personal anecdotes, no lifestyle content. When in doubt, prefer X.</p>
+<p>LinkedIn uses OAuth 2.0 with a long-lived Bearer token (valid 60 days, same as Threads) and a single <code>POST /v2/ugcPosts</code> endpoint:</p>
+<pre><code>POST https://api.linkedin.com/v2/ugcPosts
+Authorization: Bearer {token}
+X-Restli-Protocol-Version: 2.0.0
+
+{
+  &quot;author&quot;: &quot;urn:li:person:{memberId}&quot;,
+  &quot;lifecycleState&quot;: &quot;PUBLISHED&quot;,
+  &quot;specificContent&quot;: {
+    &quot;com.linkedin.ugc.ShareContent&quot;: {
+      &quot;shareCommentary&quot;: {&quot;text&quot;: &quot;your post here&quot;},
+      &quot;shareMediaCategory&quot;: &quot;NONE&quot;
+    }
+  },
+  &quot;visibility&quot;: {
+    &quot;com.linkedin.ugc.MemberNetworkVisibility&quot;: &quot;PUBLIC&quot;
+  }
+}</code></pre>
+<p>The <code>author</code> field takes a URN, not a username. Getting it requires either calling <code>/v2/me</code> (which needs the <code>r_liteprofile</code> scope) or scraping it from your LinkedIn profile page source — searching for <code>&quot;objectUrn&quot;</code> in the page source gives you <code>&quot;urn:li:member:YOUR_ID&quot;</code>, which maps to <code>urn:li:person:YOUR_ID</code> in the API.</p>
+<aside class="blog-aside">
+<p>LinkedIn&#x27;s developer portal requires adding the <strong>Share on LinkedIn</strong> product (Default Tier, no approval required) to unlock the <code>w_member_social</code> scope. The token exchange is standard OAuth 2.0 authorization code flow, but the 60-day expiry means it needs the same proactive refresh discipline as Threads.</p>
+</aside>
+<p>The mention resolution step is skipped for LinkedIn. Bluesky, X, and Threads all use simple <code>@handle</code> syntax that Gemini can look up via Google Search. LinkedIn&#x27;s mention system requires knowing a member&#x27;s URN, which isn&#x27;t retrievable without additional scopes. For a personal posting tool the tradeoff is easy: skip it.</p>
 <h1 id="non-blocking-syndication">Non-blocking syndication</h1>
 <p>Here&#x27;s where the shared-hosting constraint got interesting.</p>
 <p>The full syndication chain - Gemini routing plus a social media API call - can take a few seconds. If I block the HTTP response on all of that, posting feels slow even though the actual write succeeded before any of it started. The fix is to respond to the client as soon as the database write is done, then syndicate afterward.</p>
@@ -162,14 +191,15 @@ exit;</code></pre>
 <p>The <code>Content-Length</code> header is important: without it, some proxies and clients will buffer the response and wait for the connection to close before delivering it, defeating the whole point. Setting it explicitly tells the client exactly when the response body ends, so it can process the response without waiting for the underlying connection to drop.</p>
 <p>The client sees an instant 201. Gemini and the social platforms run in whatever time they take. From the outside it feels like a fast write; the syndication is genuinely invisible.</p>
 <h1 id="the-frontend">The frontend</h1>
-<aside class="blog-aside">
-<p>This section is a placeholder - I&#x27;ll write it up properly once I&#x27;ve had more time with the frontend code.</p>
-</aside>
 <p>The frontend is a small SwiftUI app I vibe coded. It&#x27;s far from a feature rich editor; it&#x27;s a low-friction (and low-effort) posting surface.</p>
 <p>The main screen is a composer plus a feed. The composer is a <code>TextEditor</code> with a character count and a Post button. The feed is a plain SwiftUI <code>List</code> of recent posts with timestamps, copy support, and a few admin actions. Since this is my private app, it sends the same <code>X-Admin-Token</code> header the PHP API expects, which lets me create, edit, and delete posts from my phone.</p>
 <p>The most useful feature is offline support. The app stores the current draft, cached posts, and pending creates in <code>UserDefaults</code>. If I post without a connection, the app gives the post a temporary local ID, shows it immediately as <code>Pending</code>, and queues it for later. An <code>NWPathMonitor</code> watches for the network to come back, then syncs pending posts before refreshing the feed.</p>
 <p>The MySQL database is still the source of truth. The phone can temporarily pretend a post exists, but once the API accepts it, the normal flow takes over: database write first, then Gemini routing, then syndication.</p>
 <p>The Swift app is my private write surface while the website is my public archive.</p>
+<h2 id="app-updates">App updates</h2>
+<p><strong>April 20th, 2026</strong> — Added draft and scheduled posts. The composer now saves the current draft to <code>UserDefaults</code> automatically, so closing the app mid-thought never loses work. Scheduled posts let me queue something to go out at a specific time — useful when I want to post during peak hours without having to remember to open the app. This is all done on the app; no backend related changes were needed.</p>
+<p><strong>May 8th, 2026</strong> — Added automated @ mention detection. Before syndicating, Gemini runs a second pass over the post body using Google Search to find official handles for any named people or companies mentioned. It only substitutes when it has high confidence the handle is the correct official account — not a parody or fan page. Each platform gets the right handle format: <code>@username</code> on X and Threads, <code>@handle.bsky.social</code> on Bluesky.</p>
+<p><strong>May 22nd, 2026</strong> — Added LinkedIn as a fourth syndication platform. Gemini now routes to <code>x</code>, <code>bluesky</code>, <code>threads</code>, or <code>linkedin</code>, and can occasionally output <code>x,linkedin</code> for posts that fit both audiences. LinkedIn has the strictest routing criteria of the four: formally written, purely technical, no casual or personal content. In practice it triggers rarely, which is exactly my intent.</p>
 <h1 id="reflections">Reflections</h1>
 <p>A few things stand out after building and running this for a while.</p>
 <p>The AI routing decision is the most interesting thing in the whole stack. Knowing that the content itself will determine where a post lands makes me think differently about each one.</p>

@@ -64,13 +64,17 @@ $blueskyService = 'https://bsky.social';
 // Threads, posting as my personal Threads account
 $threadsUserId = '...';
 $threadsAccessToken = '...';
+
+// LinkedIn, posting as my personal LinkedIn account
+$linkedInAccessToken = '...';
+$linkedInPersonUrn = 'urn:li:person:...';
 ```
 
 Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Fwitter posting still works, then turn it on after the platform credentials are configured.
 
 #### Gemini routing
-Gemini decides which single platform receives the post. The PHP code calls the Gemini REST API with an explicit API key and expects exactly one of `x`, `bluesky`, or `threads`.
-For the default `gemini-2.5-flash` model, the router disables thinking with `thinkingBudget = 0` because this is a one-token classification task. The Gemini request waits up to `$geminiTimeoutSeconds`, defaulting to 30 seconds. If Gemini is not configured, fails, or returns anything other than `x`, `bluesky`, or `threads`, syndication is skipped for that post.
+Gemini decides which platform(s) receive the post. The PHP code calls the Gemini REST API with an explicit API key and expects a comma-separated list of one or more platform tokens from `x`, `bluesky`, `threads`, `linkedin`. Single-platform output is the default; the only valid multi-platform combination is `x,linkedin`, which should trigger roughly 1 in 10 posts for technical content that fits both audiences. `linkedin` alone triggers rarely and only for formally written engineering or AI/ML posts.
+For the default `gemini-2.5-flash` model, the router disables thinking with `thinkingBudget = 0` because this is a classification task. The Gemini request waits up to `$geminiTimeoutSeconds`, defaulting to 30 seconds. If Gemini is not configured, fails, or returns an unrecognised value, syndication is skipped for that post.
 
 1. Go to Google AI Studio.
 2. Create or open the project for this app.
@@ -253,6 +257,72 @@ curl -G "https://graph.threads.net/refresh_access_token" \
   --data-urlencode "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
 ```
 
+#### LinkedIn
+The LinkedIn integration uses the UGC Posts API and posts to `POST https://api.linkedin.com/v2/ugcPosts` with a long-lived OAuth 2.0 Bearer token. LinkedIn is a rare routing target — Gemini will only send strictly professional, formally written engineering or AI/ML posts there.
+
+The runtime PHP config needs:
+
+```php
+$linkedInAccessToken = 'long_lived_linkedin_access_token';
+$linkedInPersonUrn = 'urn:li:person:YOUR_MEMBER_ID';
+```
+
+Setup:
+
+1. Go to [LinkedIn Developer Portal](https://www.linkedin.com/developers/apps) and create an app (or open the existing Fwitter app).
+2. Under **Products**, add **Share on LinkedIn** (Default Tier — no approval required).
+3. Under **Auth**, add this redirect URL:
+```text
+https://flawnson.com/oauth/linkedin
+```
+4. Confirm `w_member_social` appears under OAuth 2.0 scopes.
+5. Visit this URL in the browser while logged in as the LinkedIn account to post from:
+```text
+https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fflawnson.com%2Foauth%2Flinkedin&scope=w_member_social&state=fwitter
+```
+6. Approve the consent screen. The browser redirects to a URL like:
+```text
+https://flawnson.com/oauth/linkedin?code=AQ...&state=fwitter
+```
+Copy only the `code` value (between `code=` and `&state`). Exchange it immediately — codes expire in minutes:
+```bash
+curl -X POST https://www.linkedin.com/oauth/v2/accessToken \
+  --data-urlencode "grant_type=authorization_code" \
+  --data-urlencode "code=FRESH_CODE" \
+  --data-urlencode "redirect_uri=https://flawnson.com/oauth/linkedin" \
+  --data-urlencode "client_id=CLIENT_ID" \
+  --data-urlencode "client_secret=CLIENT_SECRET"
+```
+The response contains `"access_token"` — that is `$linkedInAccessToken`. It is valid for 60 days.
+
+7. Get the numeric member ID from the LinkedIn profile page source. Open `linkedin.com/in/flawnson` in the browser, view page source, and search for `"objectUrn"`. It will look like `"objectUrn":"urn:li:member:567159976"`. The numeric ID is `567159976`, so:
+```php
+$linkedInPersonUrn = 'urn:li:person:567159976';
+```
+
+8. Test a direct post before testing through Fwitter:
+```bash
+curl -X POST https://api.linkedin.com/v2/ugcPosts \
+  -H "Authorization: Bearer LINKEDIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Restli-Protocol-Version: 2.0.0" \
+  -d '{
+    "author": "urn:li:person:567159976",
+    "lifecycleState": "PUBLISHED",
+    "specificContent": {
+      "com.linkedin.ugc.ShareContent": {
+        "shareCommentary": {"text": "Testing Fwitter LinkedIn setup."},
+        "shareMediaCategory": "NONE"
+      }
+    },
+    "visibility": {
+      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+    }
+  }'
+```
+
+LinkedIn tokens expire after 60 days. To refresh, repeat steps 5–6 to get a new code and exchange it for a new token, then update `$linkedInAccessToken` in the private PHP config.
+
 #### Syndication diagnostics
 There is a protected diagnostics mode for testing the social path without creating a Fwitter database post. It requires the same `X-Admin-Token` as normal posting.
 
@@ -274,7 +344,7 @@ curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
   -d '{"body":"Testing Fwitter syndication diagnostics.","platform":"bluesky","publish":true}'
 ```
 
-Valid `platform` values are `x`, `bluesky`, and `threads`. Leave `publish` as `false` or omit it when only checking config and routing.
+Valid `platform` values are `x`, `bluesky`, `threads`, and `linkedin`. Leave `publish` as `false` or omit it when only checking config and routing.
 
 #### References
 - Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key
@@ -283,6 +353,8 @@ Valid `platform` values are `x`, `bluesky`, and `threads`. Leave `publish` as `f
 - Bluesky creating a post: https://docs.bsky.app/docs/tutorials/creating-a-post
 - Threads long-lived tokens: https://developers.facebook.com/docs/threads/get-started/long-lived-tokens/
 - Threads API Postman collection: https://www.postman.com/meta/threads
+- LinkedIn UGC Posts API: https://learn.microsoft.com/en-us/linkedin/marketing/integrations/community-management/shares/ugc-post-api
+- LinkedIn OAuth 2.0: https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow
 
 ### App
 I wrote a small iOS app with SwiftUI to post to my website from anywhere.
