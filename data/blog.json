@@ -3,7 +3,7 @@
     "title": "Building Fwitter: a personal microblog with AI-powered social syndication",
     "slug": "building-fwitter",
     "date": "2026-05-11",
-    "excerpt": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, Threads, and LinkedIn using Gemini AI.",
+    "excerpt": "How I built a microblog on my own domain that automatically routes posts to X, Bluesky, and Threads using Gemini AI.",
     "tags": [
       "engineering",
       "php",

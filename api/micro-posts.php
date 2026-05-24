@@ -247,13 +247,9 @@ function route_micro_post_result(string $body): array {
     $prompt = <<<'PROMPT'
 You are a routing model. Your ONLY job is to decide which social platform(s) a text-only post should be published to.
 
-Output one or more platform tokens separated by commas. No spaces after commas. No punctuation other than commas. No explanation. No quotes. No reasoning.
+Output exactly one platform token. No punctuation. No explanation. No quotes. No reasoning.
 
-Valid tokens: x, bluesky, threads, linkedin
-
-Single-platform output is the default and strongly preferred.
-Multi-platform output should be rare — only when a post genuinely and clearly fits two distinct audiences at once.
-The ONLY valid multi-platform combination is: x,linkedin
+Valid tokens: x, bluesky, threads
 
 Platform definitions:
 
@@ -344,56 +340,21 @@ threads
   * low-stakes
   * socially relatable
 
-linkedin
-
-* Best for:
-
-  * software engineering insights
-  * developer tooling and workflows
-  * AI/ML technical observations
-  * open-source development
-  * technical architecture decisions
-  * programming language observations
-* Tone:
-
-  * professional
-  * precise
-  * informative
-  * never casual
-  * never conversational
-* Route here ONLY if ALL of the following are true:
-
-  * The language is formal and professional (not casual, witty, jokey, or conversational)
-  * The topic is purely technical: code, systems, algorithms, developer tools, AI/ML methods
-  * A professional software engineer reading their LinkedIn feed would find it directly valuable
-  * It does NOT contain: business strategy, startup culture, personal anecdotes, lifestyle content, health topics, or casual observations
-* This platform should trigger rarely. If a post could go to x or linkedin, always prefer x.
-
-Multi-platform rules:
-
-* Output x,linkedin ONLY when the post is simultaneously: technically substantive enough for a professional engineering audience AND punchy/opinionated enough for X
-* Never combine linkedin with bluesky or threads
-* Strongly prefer single-platform. When uncertain about x,linkedin, output x only.
-
 Guideline rules:
 
 * If a post is about startups, AI, technical systems, culturally experimental, or ambitious ideas -> prefer x
 * If a post is artistic, philosophical, or reflective -> prefer bluesky
 * If a post is about everyday life, food, fitness, pets, or casual relatable experiences -> prefer threads
-* If a post is formally written about engineering, development, or AI/ML methods -> consider linkedin (rare)
-
 Tie-breaking rules:
 
 * Serious/professional -> x
 * Thoughtful/artistic -> bluesky
 * Casual/social -> threads
-* Technical + formal + clearly professional -> linkedin or x,linkedin (rare)
-* When uncertain about linkedin -> x
 
 Input post:
 {{POST}}
 
-Return only the platform token(s). Valid outputs: x — bluesky — threads — linkedin — x,linkedin
+Return only the platform token. Valid outputs: x — bluesky — threads
 PROMPT;
 
     $response = http_json_request(
@@ -422,7 +383,7 @@ PROMPT;
 
     $text = gemini_response_text($response);
 
-    $validPlatforms = ['x', 'bluesky', 'threads', 'linkedin'];
+    $validPlatforms = ['x', 'bluesky', 'threads'];
     $tokens = array_values(array_filter(array_map('trim', explode(',', $text))));
 
     $allValid = !empty($tokens) && count($tokens) === count(array_unique($tokens));
@@ -434,9 +395,7 @@ PROMPT;
     }
 
     if ($allValid && count($tokens) > 1) {
-        $sorted = $tokens;
-        sort($sorted);
-        $allValid = $sorted === ['linkedin', 'x'];
+        $allValid = false;
     }
 
     if (!$allValid) {
@@ -539,10 +498,6 @@ function gemini_resolve_mentions(string $body, string $platform, string $apiKey)
 }
 
 function resolve_mentions_for_syndication(string $body, string $platform): string {
-    if ($platform === 'linkedin') {
-        return $body;
-    }
-
     $apiKey = config_string('geminiApiKey');
     if ($apiKey === '') {
         return $body;
@@ -682,36 +637,6 @@ function publish_to_threads(string $body): array {
     ]);
 }
 
-function publish_to_linkedin(string $body): array {
-    $accessToken = config_string('linkedInAccessToken');
-    $personUrn = config_string('linkedInPersonUrn');
-
-    if ($accessToken === '' || $personUrn === '') {
-        return ['ok' => false, 'error' => 'linkedin_not_configured'];
-    }
-
-    return http_json_request(
-        'https://api.linkedin.com/v2/ugcPosts',
-        [
-            'Authorization: Bearer ' . $accessToken,
-            'X-Restli-Protocol-Version: 2.0.0',
-        ],
-        [
-            'author' => $personUrn,
-            'lifecycleState' => 'PUBLISHED',
-            'specificContent' => [
-                'com.linkedin.ugc.ShareContent' => [
-                    'shareCommentary' => ['text' => $body],
-                    'shareMediaCategory' => 'NONE',
-                ],
-            ],
-            'visibility' => [
-                'com.linkedin.ugc.MemberNetworkVisibility' => 'PUBLIC',
-            ],
-        ]
-    );
-}
-
 function publish_to_platform(string $platform, string $body): array {
     if ($platform === 'x') {
         return publish_to_x($body);
@@ -723,10 +648,6 @@ function publish_to_platform(string $platform, string $body): array {
 
     if ($platform === 'threads') {
         return publish_to_threads($body);
-    }
-
-    if ($platform === 'linkedin') {
-        return publish_to_linkedin($body);
     }
 
     return ['ok' => false, 'error' => 'invalid_platform'];
@@ -823,10 +744,6 @@ function social_config_status(): array {
             'user_id_present' => config_string('threadsUserId') !== '',
             'access_token_present' => config_string('threadsAccessToken') !== '',
         ],
-        'linkedin' => [
-            'access_token_present' => config_string('linkedInAccessToken') !== '',
-            'person_urn_present' => config_string('linkedInPersonUrn') !== '',
-        ],
     ];
 }
 
@@ -848,7 +765,7 @@ function handle_syndication_debug(): void {
     ];
 
     if ($forcedPlatform !== '') {
-        if (!in_array($forcedPlatform, ['x', 'bluesky', 'threads', 'linkedin'], true)) {
+        if (!in_array($forcedPlatform, ['x', 'bluesky', 'threads'], true)) {
             respond(422, ["error" => "invalid_platform"]);
         }
 

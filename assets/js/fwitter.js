@@ -103,7 +103,7 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
     }
 }
 
-const PLATFORM_LABELS = { x: "X", bluesky: "Bluesky", threads: "Threads", linkedin: "LinkedIn" };
+const PLATFORM_LABELS = { x: "X", bluesky: "Bluesky", threads: "Threads" };
 
 function buildPostElement(post) {
     const article = document.createElement("article");

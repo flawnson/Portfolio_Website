@@ -100,7 +100,7 @@ function renderMicroPosts(posts) {
         return;
     }
 
-    const platformLabels = { x: "X", bluesky: "Bluesky", threads: "Threads", linkedin: "LinkedIn" };
+    const platformLabels = { x: "X", bluesky: "Bluesky", threads: "Threads" };
 
     root.innerHTML = posts.map((post) => {
         const safeBody = linkify(escapeHtml(post.body));
