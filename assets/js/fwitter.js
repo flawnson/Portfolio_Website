@@ -105,9 +105,45 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
 
 const PLATFORM_LABELS = { x: "X", bluesky: "Bluesky", threads: "Threads" };
 
+function buildPlatformUrl(post) {
+    const ids = post.platform_post_ids;
+    const platforms = post.syndicated_platforms;
+
+    if (!ids || !Array.isArray(platforms) || !platforms.length) return null;
+
+    const platform = platforms[0];
+
+    if (platform === "x" && ids.x?.post_id) {
+        return `https://x.com/i/web/status/${ids.x.post_id}`;
+    }
+
+    if (platform === "bluesky" && ids.bluesky?.uri) {
+        const withoutScheme = ids.bluesky.uri.replace("at://", "");
+        const parts = withoutScheme.split("/");
+        const did = parts[0];
+        const rkey = parts[parts.length - 1];
+        if (did && rkey) return `https://bsky.app/profile/${did}/post/${rkey}`;
+    }
+
+    if (platform === "threads" && ids.threads?.url) {
+        return ids.threads.url;
+    }
+
+    return null;
+}
+
 function buildPostElement(post) {
     const article = document.createElement("article");
     article.className = "fwitter-post";
+
+    const url = buildPlatformUrl(post);
+    if (url) {
+        article.classList.add("fwitter-post--linked");
+        article.addEventListener("click", (e) => {
+            if (e.target.closest("a")) return;
+            window.open(url, "_blank", "noopener,noreferrer");
+        });
+    }
 
     const body = document.createElement("p");
     body.className = "fwitter-post-body";

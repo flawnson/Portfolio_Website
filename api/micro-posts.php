@@ -148,6 +148,36 @@ function http_json_request(string $url, array $headers, array $payload, int $tim
     ];
 }
 
+function http_get_request(string $url, array $headers = [], int $timeoutSeconds = 6): array {
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl_unavailable'];
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPGET => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => $timeoutSeconds,
+    ]);
+
+    $body = curl_exec($ch);
+    $error = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($body) ? json_decode($body, true) : null;
+
+    return [
+        'ok' => $error === '' && $status >= 200 && $status < 300,
+        'status' => $status,
+        'json' => is_array($decoded) ? $decoded : null,
+        'body' => is_string($body) ? $body : '',
+        'error' => $error,
+    ];
+}
+
 function http_form_request(string $url, array $fields, int $timeoutSeconds = 6): array {
     if (!function_exists('curl_init')) {
         return ['ok' => false, 'error' => 'curl_unavailable'];
@@ -515,6 +545,44 @@ function resolve_mentions_for_syndication(string $body, string $platform): strin
     }
 }
 
+function threads_fetch_permalink(string $threadId, string $accessToken): ?string {
+    $result = http_get_request(
+        'https://graph.threads.net/v1.0/' . rawurlencode($threadId) . '?fields=permalink&access_token=' . rawurlencode($accessToken)
+    );
+    $permalink = (string)($result['json']['permalink'] ?? '');
+    return $permalink !== '' ? $permalink : null;
+}
+
+function extract_platform_post_id(string $platform, array $result): ?array {
+    if (!($result['ok'] ?? false) || !isset($result['json'])) {
+        return null;
+    }
+
+    $json = $result['json'];
+
+    if ($platform === 'x') {
+        $postId = (string)($json['data']['id'] ?? '');
+        return $postId !== '' ? ['post_id' => $postId] : null;
+    }
+
+    if ($platform === 'threads') {
+        $postId = (string)($json['id'] ?? '');
+        if ($postId === '') return null;
+        $data = ['post_id' => $postId];
+        $url = (string)($json['permalink'] ?? '');
+        if ($url !== '') $data['url'] = $url;
+        return $data;
+    }
+
+    if ($platform === 'bluesky') {
+        $uri = (string)($json['uri'] ?? '');
+        $cid = (string)($json['cid'] ?? '');
+        return ($uri !== '' && $cid !== '') ? ['uri' => $uri, 'cid' => $cid] : null;
+    }
+
+    return null;
+}
+
 function publish_to_bluesky(string $body): array {
     $handle = config_string('blueskyHandle');
     $password = config_string('blueskyAppPassword');
@@ -631,10 +699,19 @@ function publish_to_threads(string $body): array {
         ];
     }
 
-    return http_form_request($baseUrl . '/threads_publish', [
+    $publishResult = http_form_request($baseUrl . '/threads_publish', [
         'creation_id' => $creationId,
         'access_token' => $accessToken,
     ]);
+
+    if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
+        $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
+        if ($permalink !== null) {
+            $publishResult['json']['permalink'] = $permalink;
+        }
+    }
+
+    return $publishResult;
 }
 
 function publish_to_platform(string $platform, string $body): array {
@@ -651,6 +728,139 @@ function publish_to_platform(string $platform, string $body): array {
     }
 
     return ['ok' => false, 'error' => 'invalid_platform'];
+}
+
+function reply_on_x(string $body, string $parentTweetId): array {
+    if (
+        config_string('xApiKey') === '' ||
+        config_string('xApiSecret') === '' ||
+        config_string('xAccessToken') === '' ||
+        config_string('xAccessTokenSecret') === ''
+    ) {
+        return ['ok' => false, 'error' => 'x_not_configured'];
+    }
+
+    $url = 'https://api.x.com/2/tweets';
+    return http_json_request($url, [oauth1_header('POST', $url)], [
+        'text' => $body,
+        'reply' => ['in_reply_to_tweet_id' => $parentTweetId],
+    ]);
+}
+
+function reply_on_threads(string $body, string $parentId): array {
+    $userId = config_string('threadsUserId');
+    $accessToken = config_string('threadsAccessToken');
+
+    if ($userId === '' || $accessToken === '') {
+        return ['ok' => false, 'error' => 'threads_not_configured'];
+    }
+
+    $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
+    $container = http_form_request($baseUrl . '/threads', [
+        'media_type' => 'TEXT',
+        'text' => $body,
+        'reply_to_id' => $parentId,
+        'access_token' => $accessToken,
+    ]);
+
+    $creationId = (string)($container['json']['id'] ?? '');
+    if (!$container['ok'] || $creationId === '') {
+        return [
+            'ok' => false,
+            'error' => 'threads_container_failed',
+            'status' => $container['status'] ?? 0,
+            'json' => $container['json'] ?? null,
+            'body' => $container['body'] ?? '',
+        ];
+    }
+
+    $publishResult = http_form_request($baseUrl . '/threads_publish', [
+        'creation_id' => $creationId,
+        'access_token' => $accessToken,
+    ]);
+
+    if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
+        $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
+        if ($permalink !== null) {
+            $publishResult['json']['permalink'] = $permalink;
+        }
+    }
+
+    return $publishResult;
+}
+
+function reply_on_bluesky(string $body, string $parentUri, string $parentCid, string $rootUri, string $rootCid): array {
+    $handle = config_string('blueskyHandle');
+    $password = config_string('blueskyAppPassword');
+    $service = rtrim(config_string('blueskyService', 'https://bsky.social'), '/');
+
+    if ($handle === '' || $password === '') {
+        return ['ok' => false, 'error' => 'bluesky_not_configured'];
+    }
+
+    $session = http_json_request($service . '/xrpc/com.atproto.server.createSession', [], [
+        'identifier' => $handle,
+        'password' => $password,
+    ]);
+
+    $accessJwt = (string)($session['json']['accessJwt'] ?? '');
+    $repo = (string)($session['json']['did'] ?? $handle);
+    if (!$session['ok'] || $accessJwt === '') {
+        return [
+            'ok' => false,
+            'error' => 'bluesky_session_failed',
+            'status' => $session['status'] ?? 0,
+            'json' => $session['json'] ?? null,
+            'body' => $session['body'] ?? '',
+        ];
+    }
+
+    return http_json_request(
+        $service . '/xrpc/com.atproto.repo.createRecord',
+        ['Authorization: Bearer ' . $accessJwt],
+        [
+            'repo' => $repo,
+            'collection' => 'app.bsky.feed.post',
+            'record' => [
+                '$type' => 'app.bsky.feed.post',
+                'text' => $body,
+                'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
+                'reply' => [
+                    'root'   => ['uri' => $rootUri,   'cid' => $rootCid],
+                    'parent' => ['uri' => $parentUri, 'cid' => $parentCid],
+                ],
+            ],
+        ]
+    );
+}
+
+function find_bluesky_root(int $startPostId, PDO $pdo): ?array {
+    $current = $startPostId;
+    $maxHops = 50;
+
+    for ($i = 0; $i < $maxHops; $i++) {
+        $stmt = $pdo->prepare("SELECT parent_id, platform_post_ids FROM micro_posts WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $current]);
+        $row = $stmt->fetch();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        if ($row['parent_id'] === null) {
+            $ids = is_string($row['platform_post_ids']) ? json_decode($row['platform_post_ids'], true) : null;
+            $bluesky = is_array($ids) ? ($ids['bluesky'] ?? null) : null;
+            if (is_array($bluesky) && isset($bluesky['uri'], $bluesky['cid'])) {
+                return ['uri' => (string)$bluesky['uri'], 'cid' => (string)$bluesky['cid']];
+            }
+            return null;
+        }
+
+        $current = (int)$row['parent_id'];
+    }
+
+    error_log("Fwitter find_bluesky_root: exceeded max hops from post {$startPostId}");
+    return null;
 }
 
 function syndicate_micro_post(string $body, int $postId): array {
@@ -685,7 +895,7 @@ function syndicate_micro_post(string $body, int $postId): array {
             error_log("Fwitter syndication failed for post {$postId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
         }
 
-        $results[$platform] = ['ok' => (bool)($result['ok'] ?? false), 'result' => $summary];
+        $results[$platform] = ['ok' => (bool)($result['ok'] ?? false), 'result' => $summary, 'post_id' => extract_platform_post_id($platform, $result)];
     }
 
     return [
@@ -702,11 +912,26 @@ function run_syndication_safely(string $body, int $postId, PDO $pdo): array {
 
         if (!empty($result['platforms'])) {
             $platformStr = implode(',', $result['platforms']);
+
+            $platformPostIds = [];
+            foreach ($result['results'] ?? [] as $platform => $platformResult) {
+                if (($platformResult['ok'] ?? false) && is_array($platformResult['post_id'] ?? null)) {
+                    $platformPostIds[$platform] = $platformResult['post_id'];
+                }
+            }
+
             try {
-                $stmt = $pdo->prepare("UPDATE micro_posts SET syndicated_platforms = :platforms WHERE id = :id LIMIT 1");
-                $stmt->execute([':platforms' => $platformStr, ':id' => $postId]);
+                $sql = "UPDATE micro_posts SET syndicated_platforms = :platforms";
+                $params = [':platforms' => $platformStr, ':id' => $postId];
+                if (!empty($platformPostIds)) {
+                    $sql .= ", platform_post_ids = :ids";
+                    $params[':ids'] = json_encode($platformPostIds, JSON_UNESCAPED_SLASHES);
+                }
+                $sql .= " WHERE id = :id LIMIT 1";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
             } catch (Throwable $e) {
-                error_log("Fwitter failed to write syndicated_platforms for post {$postId}: " . $e->getMessage());
+                error_log("Fwitter failed to write syndication data for post {$postId}: " . $e->getMessage());
             }
         }
 
@@ -717,6 +942,131 @@ function run_syndication_safely(string $body, int $postId, PDO $pdo): array {
             'status' => 'crashed',
             'error' => $e->getMessage(),
         ];
+    }
+}
+
+function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO $pdo): array {
+    if (!config_enabled('socialSyndicationEnabled')) {
+        return ['status' => 'disabled'];
+    }
+
+    $stmt = $pdo->prepare("SELECT syndicated_platforms, platform_post_ids FROM micro_posts WHERE id = :id LIMIT 1");
+    $stmt->execute([':id' => $parentPostId]);
+    $parent = $stmt->fetch();
+
+    if (!is_array($parent)) {
+        return ['status' => 'skipped', 'reason' => 'parent_not_found'];
+    }
+
+    $rawIds = is_string($parent['platform_post_ids']) ? json_decode($parent['platform_post_ids'], true) : null;
+    if (!is_array($rawIds) || empty($rawIds)) {
+        error_log("Fwitter reply syndication skipped for post {$replyPostId}: parent {$parentPostId} has no platform_post_ids");
+        return ['status' => 'skipped', 'reason' => 'parent_missing_platform_ids'];
+    }
+
+    $platforms = [];
+    if (is_string($parent['syndicated_platforms']) && $parent['syndicated_platforms'] !== '') {
+        $platforms = array_values(array_filter(array_map('trim', explode(',', $parent['syndicated_platforms']))));
+    }
+
+    if (empty($platforms)) {
+        return ['status' => 'skipped', 'reason' => 'parent_not_syndicated'];
+    }
+
+    $results = [];
+    $anyOk = false;
+
+    foreach ($platforms as $platform) {
+        $syndicationBody = resolve_mentions_for_syndication($body, $platform);
+
+        if ($platform === 'x') {
+            $parentTweetId = (string)($rawIds['x']['post_id'] ?? '');
+            if ($parentTweetId === '') {
+                $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'missing_parent_post_id'], 'post_id' => null];
+                error_log("Fwitter reply to x skipped for post {$replyPostId}: no x.post_id in parent {$parentPostId}");
+                continue;
+            }
+            $result = reply_on_x($syndicationBody, $parentTweetId);
+        } elseif ($platform === 'threads') {
+            $parentThreadsId = (string)($rawIds['threads']['post_id'] ?? '');
+            if ($parentThreadsId === '') {
+                $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'missing_parent_post_id'], 'post_id' => null];
+                error_log("Fwitter reply to threads skipped for post {$replyPostId}: no threads.post_id in parent {$parentPostId}");
+                continue;
+            }
+            $result = reply_on_threads($syndicationBody, $parentThreadsId);
+        } elseif ($platform === 'bluesky') {
+            $parentUri = (string)($rawIds['bluesky']['uri'] ?? '');
+            $parentCid = (string)($rawIds['bluesky']['cid'] ?? '');
+            if ($parentUri === '' || $parentCid === '') {
+                $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'missing_parent_bluesky_ids'], 'post_id' => null];
+                error_log("Fwitter reply to bluesky skipped for post {$replyPostId}: no bluesky uri/cid in parent {$parentPostId}");
+                continue;
+            }
+            $root = find_bluesky_root($parentPostId, $pdo);
+            if ($root === null) {
+                $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'bluesky_root_not_found'], 'post_id' => null];
+                error_log("Fwitter reply to bluesky skipped for post {$replyPostId}: could not resolve root from parent {$parentPostId}");
+                continue;
+            }
+            $result = reply_on_bluesky($syndicationBody, $parentUri, $parentCid, $root['uri'], $root['cid']);
+        } else {
+            $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'unsupported_platform'], 'post_id' => null];
+            continue;
+        }
+
+        $summary = http_result_summary($result);
+        $platformId = extract_platform_post_id($platform, $result);
+
+        if ($result['ok'] ?? false) {
+            $anyOk = true;
+        } else {
+            error_log("Fwitter reply syndication failed for post {$replyPostId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
+        }
+
+        $results[$platform] = ['ok' => (bool)($result['ok'] ?? false), 'result' => $summary, 'post_id' => $platformId];
+    }
+
+    return [
+        'status' => $anyOk ? 'published' : 'failed',
+        'platforms' => $platforms,
+        'results' => $results,
+    ];
+}
+
+function run_reply_syndication_safely(int $replyPostId, int $parentPostId, string $body, PDO $pdo): array {
+    try {
+        $result = syndicate_reply($replyPostId, $parentPostId, $body, $pdo);
+
+        if (!empty($result['platforms'])) {
+            $platformStr = implode(',', $result['platforms']);
+
+            $platformPostIds = [];
+            foreach ($result['results'] ?? [] as $platform => $platformResult) {
+                if (($platformResult['ok'] ?? false) && is_array($platformResult['post_id'] ?? null)) {
+                    $platformPostIds[$platform] = $platformResult['post_id'];
+                }
+            }
+
+            try {
+                $sql = "UPDATE micro_posts SET syndicated_platforms = :platforms";
+                $params = [':platforms' => $platformStr, ':id' => $replyPostId];
+                if (!empty($platformPostIds)) {
+                    $sql .= ", platform_post_ids = :ids";
+                    $params[':ids'] = json_encode($platformPostIds, JSON_UNESCAPED_SLASHES);
+                }
+                $sql .= " WHERE id = :id LIMIT 1";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+            } catch (Throwable $e) {
+                error_log("Fwitter failed to write syndication data for reply {$replyPostId}: " . $e->getMessage());
+            }
+        }
+
+        return $result;
+    } catch (Throwable $e) {
+        error_log("Fwitter reply syndication crashed for post {$replyPostId}: " . $e->getMessage());
+        return ['status' => 'crashed', 'error' => $e->getMessage()];
     }
 }
 
@@ -836,7 +1186,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $beforeId = isset($_GET["before_id"]) ? (int) $_GET["before_id"] : 0;
 
     $sql = "
-        SELECT id, body, syndicated_platforms, created_at
+        SELECT id, body, parent_id, syndicated_platforms, platform_post_ids, created_at
         FROM micro_posts
     ";
 
@@ -866,10 +1216,15 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         $platforms = isset($post['syndicated_platforms']) && $post['syndicated_platforms'] !== null
             ? explode(',', (string) $post['syndicated_platforms'])
             : null;
+        $platformPostIds = isset($post['platform_post_ids']) && $post['platform_post_ids'] !== null
+            ? json_decode((string) $post['platform_post_ids'], true)
+            : null;
         return [
             'id' => (int) $post['id'],
             'body' => (string) $post['body'],
+            'parent_id' => isset($post['parent_id']) ? (int) $post['parent_id'] : null,
             'syndicated_platforms' => $platforms,
+            'platform_post_ids' => is_array($platformPostIds) ? $platformPostIds : null,
             'created_at' => (string) $post['created_at'],
         ];
     }, $posts);
@@ -909,6 +1264,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if (mb_strlen($body) > 1000) {
         respond(422, ["error" => "body_too_long"]);
+    }
+
+    $replyToId = isset($json["reply_to_id"]) ? (int)$json["reply_to_id"] : 0;
+
+    if ($replyToId > 0) {
+        $stmt = $pdo->prepare("SELECT id FROM micro_posts WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $replyToId]);
+        if (!$stmt->fetch()) {
+            respond(422, ["error" => "parent_not_found"]);
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO micro_posts (body, parent_id) VALUES (:body, :parent_id)");
+        $stmt->execute([':body' => $body, ':parent_id' => $replyToId]);
+        $postId = (int)$pdo->lastInsertId();
+
+        http_response_code(201);
+        header('Content-Type: application/json');
+        $responseJson = json_encode(
+            ["ok" => true, "id" => $postId, "reply_to_id" => $replyToId, "syndication" => "pending"],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        header('Content-Length: ' . strlen($responseJson));
+        echo $responseJson;
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            ob_flush();
+            flush();
+        }
+
+        run_reply_syndication_safely($postId, $replyToId, $body, $pdo);
+        exit;
     }
 
     $stmt = $pdo->prepare("

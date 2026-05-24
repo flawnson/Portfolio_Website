@@ -91,6 +91,33 @@ function formatRelativeTime(dateInput) {
     return `${diffYears} years ago`;
 }
 
+function buildPlatformUrl(post) {
+    const ids = post.platform_post_ids;
+    const platforms = post.syndicated_platforms;
+
+    if (!ids || !Array.isArray(platforms) || !platforms.length) return null;
+
+    const platform = platforms[0];
+
+    if (platform === "x" && ids.x?.post_id) {
+        return `https://x.com/i/web/status/${ids.x.post_id}`;
+    }
+
+    if (platform === "bluesky" && ids.bluesky?.uri) {
+        const withoutScheme = ids.bluesky.uri.replace("at://", "");
+        const parts = withoutScheme.split("/");
+        const did = parts[0];
+        const rkey = parts[parts.length - 1];
+        if (did && rkey) return `https://bsky.app/profile/${did}/post/${rkey}`;
+    }
+
+    if (platform === "threads" && ids.threads?.url) {
+        return ids.threads.url;
+    }
+
+    return null;
+}
+
 function renderMicroPosts(posts) {
     const root = document.getElementById("micro-posts");
     if (!root) return;
@@ -109,9 +136,12 @@ function renderMicroPosts(posts) {
         const platforms = Array.isArray(post.syndicated_platforms) && post.syndicated_platforms.length
             ? `<span style="opacity:0.68;font-size:inherit;">${post.syndicated_platforms.map((p) => platformLabels[p] || p).join(", ")}</span>`
             : "";
+        const url = buildPlatformUrl(post);
+        const cursorStyle = url ? "cursor:pointer;" : "";
+        const dataAttr = url ? ` data-platform-url="${escapeHtml(url)}"` : "";
 
         return `
-            <article class="micro-post" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
+            <article class="micro-post" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd; ${cursorStyle}"${dataAttr}>
                 <p style="white-space: pre-wrap; margin-bottom: 0.4rem;">${safeBody}</p>
                 <small style="display:flex;justify-content:space-between;align-items:center;"><span>${relativeTime}</span>${platforms}</small>
             </article>
@@ -238,3 +268,14 @@ async function loadLastCommitTimer() {
 loadMicroPosts();
 loadLastCommitTimer();
 setInterval(refreshMicroPosts, 15000);
+
+const microPostsRoot = document.getElementById("micro-posts");
+if (microPostsRoot) {
+    microPostsRoot.addEventListener("click", (e) => {
+        if (e.target.closest("a")) return;
+        const article = e.target.closest("[data-platform-url]");
+        if (!article) return;
+        const url = article.dataset.platformUrl;
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+    });
+}

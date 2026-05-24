@@ -71,6 +71,24 @@
     opacity: 0.85;
 }
 
+.fwitter-post--linked {
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    margin-left: -8px;
+    margin-right: -8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 4px;
+}
+
+.fwitter-post--linked:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .fwitter-post--linked:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
 .feed-status {
     margin: 18px 0;
     font-size: 1.5rem;
