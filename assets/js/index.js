@@ -133,6 +133,9 @@ function renderMicroPosts(posts) {
         const safeBody = linkify(escapeHtml(post.body));
         const createdAt = new Date(post.created_at.replace(" ", "T"));
         const relativeTime = formatRelativeTime(createdAt);
+        const photoLabel = post.has_image
+            ? `<span style="opacity:0.68;font-size:inherit;">Photo</span>`
+            : "";
         const platforms = Array.isArray(post.syndicated_platforms) && post.syndicated_platforms.length
             ? `<span style="opacity:0.68;font-size:inherit;">${post.syndicated_platforms.map((p) => platformLabels[p] || p).join(", ")}</span>`
             : "";
@@ -143,7 +146,7 @@ function renderMicroPosts(posts) {
         return `
             <article class="micro-post" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd; ${cursorStyle}"${dataAttr}>
                 <p style="white-space: pre-wrap; margin-bottom: 0.4rem;">${safeBody}</p>
-                <small style="display:flex;justify-content:space-between;align-items:center;"><span>${relativeTime}</span>${platforms}</small>
+                <small style="display:flex;justify-content:space-between;align-items:center;"><span>${relativeTime}</span><span style="display:flex;gap:6px;">${photoLabel}${platforms}</span></small>
             </article>
         `;
     }).join("");

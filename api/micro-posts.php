@@ -209,6 +209,68 @@ function http_form_request(string $url, array $fields, int $timeoutSeconds = 6):
     ];
 }
 
+function http_binary_request(string $url, string $mimeType, string $binaryData, array $headers, int $timeoutSeconds = 30): array {
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl_unavailable'];
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $binaryData,
+        CURLOPT_HTTPHEADER => array_merge(["Content-Type: {$mimeType}"], $headers),
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => $timeoutSeconds,
+    ]);
+
+    $body = curl_exec($ch);
+    $error = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($body) ? json_decode($body, true) : null;
+
+    return [
+        'ok' => $error === '' && $status >= 200 && $status < 300,
+        'status' => $status,
+        'json' => is_array($decoded) ? $decoded : null,
+        'body' => is_string($body) ? $body : '',
+        'error' => $error,
+    ];
+}
+
+function http_form_request_with_headers(string $url, array $fields, array $headers, int $timeoutSeconds = 30): array {
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl_unavailable'];
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => http_build_query($fields),
+        CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/x-www-form-urlencoded'], $headers),
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => $timeoutSeconds,
+    ]);
+
+    $body = curl_exec($ch);
+    $error = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($body) ? json_decode($body, true) : null;
+
+    return [
+        'ok' => $error === '' && $status >= 200 && $status < 300,
+        'status' => $status,
+        'json' => is_array($decoded) ? $decoded : null,
+        'body' => is_string($body) ? $body : '',
+        'error' => $error,
+    ];
+}
+
 function gemini_response_text(array $response): string {
     $parts = $response['json']['candidates'][0]['content']['parts'] ?? [];
     if (!is_array($parts)) {
@@ -583,7 +645,116 @@ function extract_platform_post_id(string $platform, array $result): ?array {
     return null;
 }
 
-function publish_to_bluesky(string $body): array {
+function compress_image(string $filePath, string $mimeType): string {
+    $src = false;
+    switch ($mimeType) {
+        case 'image/jpeg': $src = @imagecreatefromjpeg($filePath); break;
+        case 'image/png':  $src = @imagecreatefrompng($filePath);  break;
+        case 'image/webp': $src = @imagecreatefromwebp($filePath); break;
+        case 'image/gif':  $src = @imagecreatefromgif($filePath);  break;
+    }
+
+    if ($src === false) {
+        return (string)file_get_contents($filePath);
+    }
+
+    $origW = imagesx($src);
+    $origH = imagesy($src);
+    $maxDim = 2048;
+
+    if ($origW > $maxDim || $origH > $maxDim) {
+        if ($origW >= $origH) {
+            $newW = $maxDim;
+            $newH = (int)round($origH * ($maxDim / $origW));
+        } else {
+            $newH = $maxDim;
+            $newW = (int)round($origW * ($maxDim / $origH));
+        }
+        $dst = imagecreatetruecolor($newW, $newH);
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+        imagedestroy($src);
+        $src = $dst;
+    }
+
+    ob_start();
+    imagejpeg($src, null, 85);
+    $binary = (string)ob_get_clean();
+    imagedestroy($src);
+
+    if (strlen($binary) > 921600) {
+        $src2 = @imagecreatefromstring($binary);
+        if ($src2 !== false) {
+            ob_start();
+            imagejpeg($src2, null, 70);
+            $binary = (string)ob_get_clean();
+            imagedestroy($src2);
+        }
+    }
+
+    return $binary;
+}
+
+function upload_image_to_x(string $binaryData, string $mimeType): ?string {
+    $base64 = base64_encode($binaryData);
+    $url = 'https://upload.twitter.com/1.1/media/upload.json';
+    $params = ['media_data' => $base64];
+    $authHeader = oauth1_header('POST', $url, $params);
+    $result = http_form_request_with_headers($url, $params, [$authHeader], 60);
+
+    if (!($result['ok'] ?? false)) {
+        error_log("Fwitter X image upload failed: " . json_encode(http_result_summary($result), JSON_UNESCAPED_SLASHES));
+        return null;
+    }
+
+    $mediaId = (string)($result['json']['media_id_string'] ?? '');
+    return $mediaId !== '' ? $mediaId : null;
+}
+
+function upload_image_to_bluesky(string $binaryData, string $mimeType, string $accessJwt, string $service): ?array {
+    $result = http_binary_request(
+        $service . '/xrpc/com.atproto.repo.uploadBlob',
+        $mimeType,
+        $binaryData,
+        ['Authorization: Bearer ' . $accessJwt],
+        60
+    );
+
+    if (!($result['ok'] ?? false)) {
+        error_log("Fwitter Bluesky image upload failed: " . json_encode(http_result_summary($result), JSON_UNESCAPED_SLASHES));
+        return null;
+    }
+
+    $blob = $result['json']['blob'] ?? null;
+    return is_array($blob) ? $blob : null;
+}
+
+function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?array {
+    $uploadsDir = '/home/flawhvna/public_html/api/uploads';
+    if (!is_dir($uploadsDir)) {
+        error_log("Fwitter Threads temp upload dir missing: {$uploadsDir}");
+        return null;
+    }
+
+    $extMap = ['image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+    $ext = $extMap[$mimeType] ?? 'jpg';
+    $filename = bin2hex(random_bytes(16)) . '.' . $ext;
+    $filePath = $uploadsDir . '/' . $filename;
+
+    if (file_put_contents($filePath, $binaryData) === false) {
+        error_log("Fwitter Threads temp file write failed: {$filePath}");
+        return null;
+    }
+
+    return ['url' => 'https://flawnson.com/api/uploads/' . $filename, 'path' => $filePath];
+}
+
+function cleanup_threads_temp(string $filePath): void {
+    if (file_exists($filePath)) {
+        @unlink($filePath);
+    }
+}
+
+function publish_to_bluesky(string $body, ?array $imageData = null): array {
     $handle = config_string('blueskyHandle');
     $password = config_string('blueskyAppPassword');
     $service = rtrim(config_string('blueskyService', 'https://bsky.social'), '/');
@@ -609,17 +780,30 @@ function publish_to_bluesky(string $body): array {
         ];
     }
 
+    $blob = null;
+    if ($imageData !== null) {
+        $blob = upload_image_to_bluesky($imageData['binary'], $imageData['mime'], $accessJwt, $service);
+    }
+
+    $record = [
+        '$type' => 'app.bsky.feed.post',
+        'text' => $body,
+        'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
+    ];
+    if ($blob !== null) {
+        $record['embed'] = [
+            '$type' => 'app.bsky.embed.images',
+            'images' => [['image' => $blob, 'alt' => '']],
+        ];
+    }
+
     return http_json_request(
         $service . '/xrpc/com.atproto.repo.createRecord',
         ['Authorization: Bearer ' . $accessJwt],
         [
             'repo' => $repo,
             'collection' => 'app.bsky.feed.post',
-            'record' => [
-                '$type' => 'app.bsky.feed.post',
-                'text' => $body,
-                'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
-            ],
+            'record' => $record,
         ]
     );
 }
@@ -659,7 +843,7 @@ function oauth1_header(string $method, string $url, array $bodyParams = []): str
     return 'Authorization: OAuth ' . implode(', ', $headerPairs);
 }
 
-function publish_to_x(string $body): array {
+function publish_to_x(string $body, ?array $imageData = null): array {
     if (
         config_string('xApiKey') === '' ||
         config_string('xApiSecret') === '' ||
@@ -669,11 +853,20 @@ function publish_to_x(string $body): array {
         return ['ok' => false, 'error' => 'x_not_configured'];
     }
 
+    $mediaId = null;
+    if ($imageData !== null) {
+        $mediaId = upload_image_to_x($imageData['binary'], $imageData['mime']);
+    }
+
     $url = 'https://api.x.com/2/tweets';
-    return http_json_request($url, [oauth1_header('POST', $url)], ['text' => $body]);
+    $payload = ['text' => $body];
+    if ($mediaId !== null) {
+        $payload['media'] = ['media_ids' => [$mediaId]];
+    }
+    return http_json_request($url, [oauth1_header('POST', $url)], $payload);
 }
 
-function publish_to_threads(string $body): array {
+function publish_to_threads(string $body, ?array $imageData = null): array {
     $userId = config_string('threadsUserId');
     $accessToken = config_string('threadsAccessToken');
 
@@ -682,14 +875,26 @@ function publish_to_threads(string $body): array {
     }
 
     $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
-    $container = http_form_request($baseUrl . '/threads', [
-        'media_type' => 'TEXT',
-        'text' => $body,
-        'access_token' => $accessToken,
-    ]);
+
+    $tempInfo = null;
+    $containerParams = ['text' => $body, 'access_token' => $accessToken];
+    if ($imageData !== null) {
+        $tempInfo = upload_image_to_threads_temp($imageData['binary'], $imageData['mime']);
+        if ($tempInfo !== null) {
+            $containerParams['media_type'] = 'IMAGE';
+            $containerParams['image_url'] = $tempInfo['url'];
+        } else {
+            $containerParams['media_type'] = 'TEXT';
+        }
+    } else {
+        $containerParams['media_type'] = 'TEXT';
+    }
+
+    $container = http_form_request($baseUrl . '/threads', $containerParams);
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
+        if ($tempInfo !== null) { cleanup_threads_temp($tempInfo['path']); }
         return [
             'ok' => false,
             'error' => 'threads_container_failed',
@@ -704,6 +909,10 @@ function publish_to_threads(string $body): array {
         'access_token' => $accessToken,
     ]);
 
+    if ($tempInfo !== null) {
+        cleanup_threads_temp($tempInfo['path']);
+    }
+
     if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
         $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
         if ($permalink !== null) {
@@ -714,23 +923,23 @@ function publish_to_threads(string $body): array {
     return $publishResult;
 }
 
-function publish_to_platform(string $platform, string $body): array {
+function publish_to_platform(string $platform, string $body, ?array $imageData = null): array {
     if ($platform === 'x') {
-        return publish_to_x($body);
+        return publish_to_x($body, $imageData);
     }
 
     if ($platform === 'bluesky') {
-        return publish_to_bluesky($body);
+        return publish_to_bluesky($body, $imageData);
     }
 
     if ($platform === 'threads') {
-        return publish_to_threads($body);
+        return publish_to_threads($body, $imageData);
     }
 
     return ['ok' => false, 'error' => 'invalid_platform'];
 }
 
-function reply_on_x(string $body, string $parentTweetId): array {
+function reply_on_x(string $body, string $parentTweetId, ?array $imageData = null): array {
     if (
         config_string('xApiKey') === '' ||
         config_string('xApiSecret') === '' ||
@@ -740,14 +949,23 @@ function reply_on_x(string $body, string $parentTweetId): array {
         return ['ok' => false, 'error' => 'x_not_configured'];
     }
 
+    $mediaId = null;
+    if ($imageData !== null) {
+        $mediaId = upload_image_to_x($imageData['binary'], $imageData['mime']);
+    }
+
     $url = 'https://api.x.com/2/tweets';
-    return http_json_request($url, [oauth1_header('POST', $url)], [
+    $payload = [
         'text' => $body,
         'reply' => ['in_reply_to_tweet_id' => $parentTweetId],
-    ]);
+    ];
+    if ($mediaId !== null) {
+        $payload['media'] = ['media_ids' => [$mediaId]];
+    }
+    return http_json_request($url, [oauth1_header('POST', $url)], $payload);
 }
 
-function reply_on_threads(string $body, string $parentId): array {
+function reply_on_threads(string $body, string $parentId, ?array $imageData = null): array {
     $userId = config_string('threadsUserId');
     $accessToken = config_string('threadsAccessToken');
 
@@ -756,15 +974,26 @@ function reply_on_threads(string $body, string $parentId): array {
     }
 
     $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
-    $container = http_form_request($baseUrl . '/threads', [
-        'media_type' => 'TEXT',
-        'text' => $body,
-        'reply_to_id' => $parentId,
-        'access_token' => $accessToken,
-    ]);
+
+    $tempInfo = null;
+    $containerParams = ['text' => $body, 'reply_to_id' => $parentId, 'access_token' => $accessToken];
+    if ($imageData !== null) {
+        $tempInfo = upload_image_to_threads_temp($imageData['binary'], $imageData['mime']);
+        if ($tempInfo !== null) {
+            $containerParams['media_type'] = 'IMAGE';
+            $containerParams['image_url'] = $tempInfo['url'];
+        } else {
+            $containerParams['media_type'] = 'TEXT';
+        }
+    } else {
+        $containerParams['media_type'] = 'TEXT';
+    }
+
+    $container = http_form_request($baseUrl . '/threads', $containerParams);
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
+        if ($tempInfo !== null) { cleanup_threads_temp($tempInfo['path']); }
         return [
             'ok' => false,
             'error' => 'threads_container_failed',
@@ -779,6 +1008,10 @@ function reply_on_threads(string $body, string $parentId): array {
         'access_token' => $accessToken,
     ]);
 
+    if ($tempInfo !== null) {
+        cleanup_threads_temp($tempInfo['path']);
+    }
+
     if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
         $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
         if ($permalink !== null) {
@@ -789,7 +1022,7 @@ function reply_on_threads(string $body, string $parentId): array {
     return $publishResult;
 }
 
-function reply_on_bluesky(string $body, string $parentUri, string $parentCid, string $rootUri, string $rootCid): array {
+function reply_on_bluesky(string $body, string $parentUri, string $parentCid, string $rootUri, string $rootCid, ?array $imageData = null): array {
     $handle = config_string('blueskyHandle');
     $password = config_string('blueskyAppPassword');
     $service = rtrim(config_string('blueskyService', 'https://bsky.social'), '/');
@@ -815,21 +1048,34 @@ function reply_on_bluesky(string $body, string $parentUri, string $parentCid, st
         ];
     }
 
+    $blob = null;
+    if ($imageData !== null) {
+        $blob = upload_image_to_bluesky($imageData['binary'], $imageData['mime'], $accessJwt, $service);
+    }
+
+    $record = [
+        '$type' => 'app.bsky.feed.post',
+        'text' => $body,
+        'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
+        'reply' => [
+            'root'   => ['uri' => $rootUri,   'cid' => $rootCid],
+            'parent' => ['uri' => $parentUri, 'cid' => $parentCid],
+        ],
+    ];
+    if ($blob !== null) {
+        $record['embed'] = [
+            '$type' => 'app.bsky.embed.images',
+            'images' => [['image' => $blob, 'alt' => '']],
+        ];
+    }
+
     return http_json_request(
         $service . '/xrpc/com.atproto.repo.createRecord',
         ['Authorization: Bearer ' . $accessJwt],
         [
             'repo' => $repo,
             'collection' => 'app.bsky.feed.post',
-            'record' => [
-                '$type' => 'app.bsky.feed.post',
-                'text' => $body,
-                'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
-                'reply' => [
-                    'root'   => ['uri' => $rootUri,   'cid' => $rootCid],
-                    'parent' => ['uri' => $parentUri, 'cid' => $parentCid],
-                ],
-            ],
+            'record' => $record,
         ]
     );
 }
@@ -863,7 +1109,7 @@ function find_bluesky_root(int $startPostId, PDO $pdo): ?array {
     return null;
 }
 
-function syndicate_micro_post(string $body, int $postId): array {
+function syndicate_micro_post(string $body, int $postId, ?array $imageData = null): array {
     if (!config_enabled('socialSyndicationEnabled')) {
         return [
             'status' => 'disabled',
@@ -886,7 +1132,7 @@ function syndicate_micro_post(string $body, int $postId): array {
 
     foreach ($platforms as $platform) {
         $syndicationBody = resolve_mentions_for_syndication($body, $platform);
-        $result = publish_to_platform($platform, $syndicationBody);
+        $result = publish_to_platform($platform, $syndicationBody, $imageData);
         $summary = http_result_summary($result);
 
         if ($result['ok'] ?? false) {
@@ -906,9 +1152,9 @@ function syndicate_micro_post(string $body, int $postId): array {
     ];
 }
 
-function run_syndication_safely(string $body, int $postId, PDO $pdo): array {
+function run_syndication_safely(string $body, int $postId, PDO $pdo, ?array $imageData = null): array {
     try {
-        $result = syndicate_micro_post($body, $postId);
+        $result = syndicate_micro_post($body, $postId, $imageData);
 
         if (!empty($result['platforms'])) {
             $platformStr = implode(',', $result['platforms']);
@@ -945,7 +1191,7 @@ function run_syndication_safely(string $body, int $postId, PDO $pdo): array {
     }
 }
 
-function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO $pdo): array {
+function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO $pdo, ?array $imageData = null): array {
     if (!config_enabled('socialSyndicationEnabled')) {
         return ['status' => 'disabled'];
     }
@@ -986,7 +1232,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to x skipped for post {$replyPostId}: no x.post_id in parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_x($syndicationBody, $parentTweetId);
+            $result = reply_on_x($syndicationBody, $parentTweetId, $imageData);
         } elseif ($platform === 'threads') {
             $parentThreadsId = (string)($rawIds['threads']['post_id'] ?? '');
             if ($parentThreadsId === '') {
@@ -994,7 +1240,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to threads skipped for post {$replyPostId}: no threads.post_id in parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_threads($syndicationBody, $parentThreadsId);
+            $result = reply_on_threads($syndicationBody, $parentThreadsId, $imageData);
         } elseif ($platform === 'bluesky') {
             $parentUri = (string)($rawIds['bluesky']['uri'] ?? '');
             $parentCid = (string)($rawIds['bluesky']['cid'] ?? '');
@@ -1009,7 +1255,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to bluesky skipped for post {$replyPostId}: could not resolve root from parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_bluesky($syndicationBody, $parentUri, $parentCid, $root['uri'], $root['cid']);
+            $result = reply_on_bluesky($syndicationBody, $parentUri, $parentCid, $root['uri'], $root['cid'], $imageData);
         } else {
             $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'unsupported_platform'], 'post_id' => null];
             continue;
@@ -1034,9 +1280,9 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
     ];
 }
 
-function run_reply_syndication_safely(int $replyPostId, int $parentPostId, string $body, PDO $pdo): array {
+function run_reply_syndication_safely(int $replyPostId, int $parentPostId, string $body, PDO $pdo, ?array $imageData = null): array {
     try {
-        $result = syndicate_reply($replyPostId, $parentPostId, $body, $pdo);
+        $result = syndicate_reply($replyPostId, $parentPostId, $body, $pdo, $imageData);
 
         if (!empty($result['platforms'])) {
             $platformStr = implode(',', $result['platforms']);
@@ -1186,7 +1432,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $beforeId = isset($_GET["before_id"]) ? (int) $_GET["before_id"] : 0;
 
     $sql = "
-        SELECT id, body, parent_id, syndicated_platforms, platform_post_ids, created_at
+        SELECT id, body, parent_id, syndicated_platforms, platform_post_ids, has_image, created_at
         FROM micro_posts
     ";
 
@@ -1225,6 +1471,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             'parent_id' => isset($post['parent_id']) ? (int) $post['parent_id'] : null,
             'syndicated_platforms' => $platforms,
             'platform_post_ids' => is_array($platformPostIds) ? $platformPostIds : null,
+            'has_image' => (bool)(int)($post['has_image'] ?? 0),
             'created_at' => (string) $post['created_at'],
         ];
     }, $posts);
@@ -1250,14 +1497,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         respond(401, ["error" => "unauthorized"]);
     }
 
-    $rawBody = file_get_contents("php://input");
-    $json = json_decode($rawBody ?: "", true);
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $isMultipart = stripos($contentType, 'multipart/form-data') !== false;
 
-    if (!is_array($json)) {
-        respond(400, ["error" => "invalid_json"]);
+    if ($isMultipart) {
+        $body = trim((string)($_POST['body'] ?? ''));
+        $replyToId = isset($_POST['reply_to_id']) ? (int)$_POST['reply_to_id'] : 0;
+    } else {
+        $rawBody = file_get_contents("php://input");
+        $json = json_decode($rawBody ?: "", true);
+        if (!is_array($json)) {
+            respond(400, ["error" => "invalid_json"]);
+        }
+        $body = trim((string)($json["body"] ?? ""));
+        $replyToId = isset($json["reply_to_id"]) ? (int)$json["reply_to_id"] : 0;
     }
 
-    $body = trim((string)($json["body"] ?? ""));
     if ($body === "") {
         respond(422, ["error" => "body_required"]);
     }
@@ -1266,7 +1521,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         respond(422, ["error" => "body_too_long"]);
     }
 
-    $replyToId = isset($json["reply_to_id"]) ? (int)$json["reply_to_id"] : 0;
+    $imageData = null;
+    if ($isMultipart && isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $detectedMime = $finfo->file($_FILES['image']['tmp_name']);
+        if (!in_array($detectedMime, $allowedMimes, true)) {
+            respond(422, ["error" => "invalid_image_type"]);
+        }
+        if ($_FILES['image']['size'] > 5 * 1024 * 1024) {
+            respond(422, ["error" => "image_too_large"]);
+        }
+        if (!function_exists('imagecreatefromjpeg')) {
+            respond(500, ["error" => "gd_unavailable"]);
+        }
+        $compressed = compress_image($_FILES['image']['tmp_name'], $detectedMime);
+        $imageData = ['binary' => $compressed, 'mime' => 'image/jpeg'];
+    }
 
     if ($replyToId > 0) {
         $stmt = $pdo->prepare("SELECT id FROM micro_posts WHERE id = :id LIMIT 1");
@@ -1275,8 +1546,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             respond(422, ["error" => "parent_not_found"]);
         }
 
-        $stmt = $pdo->prepare("INSERT INTO micro_posts (body, parent_id) VALUES (:body, :parent_id)");
-        $stmt->execute([':body' => $body, ':parent_id' => $replyToId]);
+        $stmt = $pdo->prepare("INSERT INTO micro_posts (body, parent_id, has_image) VALUES (:body, :parent_id, :has_image)");
+        $stmt->execute([':body' => $body, ':parent_id' => $replyToId, ':has_image' => $imageData !== null ? 1 : 0]);
         $postId = (int)$pdo->lastInsertId();
 
         http_response_code(201);
@@ -1295,17 +1566,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             flush();
         }
 
-        run_reply_syndication_safely($postId, $replyToId, $body, $pdo);
+        run_reply_syndication_safely($postId, $replyToId, $body, $pdo, $imageData);
         exit;
     }
 
-    $stmt = $pdo->prepare("
-        INSERT INTO micro_posts (body)
-        VALUES (:body)
-    ");
-    $stmt->execute([
-        ":body" => $body,
-    ]);
+    $stmt = $pdo->prepare("INSERT INTO micro_posts (body, has_image) VALUES (:body, :has_image)");
+    $stmt->execute([":body" => $body, ":has_image" => $imageData !== null ? 1 : 0]);
 
     $postId = (int)$pdo->lastInsertId();
 
@@ -1326,7 +1592,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         flush();
     }
 
-    run_syndication_safely($body, $postId, $pdo);
+    run_syndication_safely($body, $postId, $pdo, $imageData);
     exit;
 }
 

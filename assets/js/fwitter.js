@@ -156,6 +156,13 @@ function buildPostElement(post) {
     timeSpan.textContent = formatRelativeTime(post.created_at);
     meta.appendChild(timeSpan);
 
+    if (post.has_image) {
+        const photoSpan = document.createElement("span");
+        photoSpan.className = "fwitter-post-platforms";
+        photoSpan.textContent = "Photo";
+        meta.appendChild(photoSpan);
+    }
+
     if (Array.isArray(post.syndicated_platforms) && post.syndicated_platforms.length) {
         const platformsSpan = document.createElement("span");
         platformsSpan.className = "fwitter-post-platforms";
