@@ -915,14 +915,17 @@ function publish_to_threads(string $body, ?array $imageData = null): array {
         if ($tempInfo !== null) {
             $containerParams['media_type'] = 'IMAGE';
             $containerParams['image_url'] = $tempInfo['url'];
+            error_log("Fwitter Threads IMAGE container: url={$tempInfo['url']} body_len=" . strlen($imageData['binary']));
         } else {
             $containerParams['media_type'] = 'TEXT';
+            error_log("Fwitter Threads IMAGE fallback to TEXT: upload_image_to_threads_temp returned null");
         }
     } else {
         $containerParams['media_type'] = 'TEXT';
     }
 
-    $container = http_form_request($baseUrl . '/threads', $containerParams);
+    $container = http_form_request($baseUrl . '/threads', $containerParams, 30);
+    error_log("Fwitter Threads container result: ok=" . ($container['ok'] ? 'true' : 'false') . " status={$container['status']} body=" . truncate_text((string)($container['body'] ?? ''), 300));
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
@@ -1441,22 +1444,40 @@ function handle_syndication_debug(): void {
 if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["uploads_diag"])) {
     require_admin_token();
     $uploadsDir = '/home/flawhvna/public_html/api/uploads';
+    $keep = isset($_GET['keep']);
     $diag = [
         'dir' => $uploadsDir,
         'exists' => is_dir($uploadsDir),
         'writable' => is_writable($uploadsDir),
     ];
     if ($diag['writable']) {
-        $testFile = $uploadsDir . '/diag_' . bin2hex(random_bytes(8)) . '.jpg';
-        $payload = str_repeat('x', 64);
-        $wrote = file_put_contents($testFile, $payload);
+        $testFilename = 'diag_' . bin2hex(random_bytes(8)) . '.jpg';
+        $testFile = $uploadsDir . '/' . $testFilename;
+        // Minimal valid 1x1 white JPEG
+        $minJpeg = base64_decode(
+            '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U'
+            . 'HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgN'
+            . 'DRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy'
+            . 'MjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIhAAAQQC'
+            . 'AgMAAAAAAAAAAAAAAQIDBBEhBRIxQf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAA'
+            . 'AAAAAAAAAAAAAP/aAAwDAQACEQMRAD8Amab1pRNQRQRZWVHXlJSlKUpSlKUpSlKUpSlKUpSl'
+            . 'KX//2Q=='
+        );
+        $wrote = file_put_contents($testFile, $minJpeg);
         $diag['write_bytes'] = $wrote;
         if ($wrote !== false) {
             @chmod($testFile, 0644);
             $diag['readable_after_write'] = is_readable($testFile);
             $perms = fileperms($testFile);
             $diag['file_perms'] = $perms !== false ? sprintf('%04o', $perms & 0777) : null;
-            @unlink($testFile);
+            $diag['test_url'] = 'https://flawnson.com/api/uploads/' . $testFilename;
+            if (!$keep) {
+                @unlink($testFile);
+                $diag['kept'] = false;
+            } else {
+                $diag['kept'] = true;
+                $diag['note'] = 'Test file left on disk. DELETE it when done: curl -X DELETE with ?id= or just unlink manually.';
+            }
         }
     }
     respond(200, $diag);
