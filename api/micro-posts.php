@@ -32,6 +32,27 @@ function respond(int $status, array $data): void {
     exit;
 }
 
+function finish_response_early(): void {
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+        return;
+    }
+    // LiteSpeed web server equivalent (lsphp/LSAPI)
+    if (function_exists('litespeed_finish_request')) {
+        litespeed_finish_request();
+        return;
+    }
+    // Generic fallback: tell the client the connection is closing,
+    // then flush everything out. Works on most Apache/CGI setups.
+    if (!headers_sent()) {
+        header('Connection: close');
+    }
+    if (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+}
+
 function config_string(string $name, string $default = ''): string {
     $value = $GLOBALS[$name] ?? $default;
     return is_string($value) ? trim($value) : $default;
@@ -1559,12 +1580,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header('Content-Length: ' . strlen($responseJson));
         echo $responseJson;
 
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } else {
-            ob_flush();
-            flush();
-        }
+        finish_response_early();
 
         run_reply_syndication_safely($postId, $replyToId, $body, $pdo, $imageData);
         exit;
@@ -1585,12 +1601,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     header('Content-Length: ' . strlen($responseJson));
     echo $responseJson;
 
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request();
-    } else {
-        ob_flush();
-        flush();
-    }
+    finish_response_early();
 
     run_syndication_safely($body, $postId, $pdo, $imageData);
     exit;
