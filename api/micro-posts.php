@@ -749,6 +749,11 @@ function upload_image_to_bluesky(string $binaryData, string $mimeType, string $a
     return is_array($blob) ? $blob : null;
 }
 
+function temp_image_sign(string $filename): string {
+    $secret = config_string('adminToken');
+    return hash_hmac('sha256', 'temp_image:' . $filename, $secret);
+}
+
 function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?array {
     $uploadsDir = '/home/flawhvna/public_html/api/uploads';
     if (!is_dir($uploadsDir)) {
@@ -777,7 +782,10 @@ function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?ar
     }
     @chmod($filePath, 0644);
 
-    return ['url' => 'https://flawnson.com/api/uploads/' . $filename, 'path' => $filePath];
+    $sig = temp_image_sign($filename);
+    $url = 'https://flawnson.com/api/micro-posts.php?serve_temp_image=' . rawurlencode($filename) . '&sig=' . $sig;
+    error_log("Fwitter Threads temp image written: {$filePath} ({$written} bytes) served as {$url}");
+    return ['url' => $url, 'path' => $filePath];
 }
 
 function cleanup_threads_temp(string $filePath): void {
@@ -1439,6 +1447,38 @@ function handle_syndication_debug(): void {
     $debug['publish'] = ['platforms' => $platforms, 'results' => $publishResults];
 
     respond(200, $debug);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["serve_temp_image"])) {
+    $filename = basename((string)($_GET['serve_temp_image'] ?? ''));
+    $sig = (string)($_GET['sig'] ?? '');
+
+    if ($filename === '' || !hash_equals(temp_image_sign($filename), $sig)) {
+        http_response_code(403);
+        exit;
+    }
+
+    $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    if (!in_array($ext, $allowedExts, true)) {
+        http_response_code(403);
+        exit;
+    }
+
+    $filePath = '/home/flawhvna/public_html/api/uploads/' . $filename;
+    if (!is_file($filePath) || !is_readable($filePath)) {
+        http_response_code(404);
+        exit;
+    }
+
+    $mimeMap = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+    $mime = $mimeMap[$ext] ?? 'image/jpeg';
+
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($filePath));
+    header('Cache-Control: no-store');
+    readfile($filePath);
+    exit;
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["uploads_diag"])) {
