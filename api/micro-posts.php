@@ -755,16 +755,27 @@ function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?ar
         error_log("Fwitter Threads temp upload dir missing: {$uploadsDir}");
         return null;
     }
+    if (!is_writable($uploadsDir)) {
+        error_log("Fwitter Threads temp upload dir not writable: {$uploadsDir}");
+        return null;
+    }
 
     $extMap = ['image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
     $ext = $extMap[$mimeType] ?? 'jpg';
     $filename = bin2hex(random_bytes(16)) . '.' . $ext;
     $filePath = $uploadsDir . '/' . $filename;
 
-    if (file_put_contents($filePath, $binaryData) === false) {
+    $written = file_put_contents($filePath, $binaryData);
+    if ($written === false) {
         error_log("Fwitter Threads temp file write failed: {$filePath}");
         return null;
     }
+    if ($written === 0) {
+        error_log("Fwitter Threads temp file wrote 0 bytes (empty image data): {$filePath}");
+        @unlink($filePath);
+        return null;
+    }
+    @chmod($filePath, 0644);
 
     return ['url' => 'https://flawnson.com/api/uploads/' . $filename, 'path' => $filePath];
 }
@@ -1425,6 +1436,30 @@ function handle_syndication_debug(): void {
     $debug['publish'] = ['platforms' => $platforms, 'results' => $publishResults];
 
     respond(200, $debug);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["uploads_diag"])) {
+    require_admin_token();
+    $uploadsDir = '/home/flawhvna/public_html/api/uploads';
+    $diag = [
+        'dir' => $uploadsDir,
+        'exists' => is_dir($uploadsDir),
+        'writable' => is_writable($uploadsDir),
+    ];
+    if ($diag['writable']) {
+        $testFile = $uploadsDir . '/diag_' . bin2hex(random_bytes(8)) . '.jpg';
+        $payload = str_repeat('x', 64);
+        $wrote = file_put_contents($testFile, $payload);
+        $diag['write_bytes'] = $wrote;
+        if ($wrote !== false) {
+            @chmod($testFile, 0644);
+            $diag['readable_after_write'] = is_readable($testFile);
+            $perms = fileperms($testFile);
+            $diag['file_perms'] = $perms !== false ? sprintf('%04o', $perms & 0777) : null;
+            @unlink($testFile);
+        }
+    }
+    respond(200, $diag);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_debug"])) {
