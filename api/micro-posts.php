@@ -1639,6 +1639,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     $imageData = null;
+    if ($isMultipart && isset($_FILES['image'])) {
+        $uploadError = $_FILES['image']['error'];
+        $uploadSize = $_FILES['image']['size'] ?? 0;
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            error_log("Fwitter image upload error: code={$uploadError} size={$uploadSize} (1=ini_size 2=form_size 3=partial 4=no_file)");
+        } else {
+            error_log("Fwitter image upload received: size={$uploadSize} bytes");
+        }
+    }
     if ($isMultipart && isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
