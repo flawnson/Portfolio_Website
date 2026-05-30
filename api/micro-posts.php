@@ -636,6 +636,21 @@ function threads_fetch_permalink(string $threadId, string $accessToken): ?string
     return $permalink !== '' ? $permalink : null;
 }
 
+function threads_wait_for_container(string $containerId, string $accessToken, int $maxAttempts = 12): string {
+    $url = 'https://graph.threads.net/v1.0/' . rawurlencode($containerId)
+        . '?fields=status,error_message&access_token=' . rawurlencode($accessToken);
+    for ($i = 0; $i < $maxAttempts; $i++) {
+        $result = http_get_request($url);
+        $status = (string)($result['json']['status'] ?? '');
+        error_log("Fwitter Threads container {$containerId} status attempt " . ($i + 1) . ": {$status}"
+            . (isset($result['json']['error_message']) ? ' error_message=' . $result['json']['error_message'] : ''));
+        if ($status === 'FINISHED') return 'FINISHED';
+        if ($status === 'ERROR' || $status === 'EXPIRED') return $status;
+        sleep(2); // background task; ignore_user_abort(true) is set at top of file
+    }
+    return 'TIMEOUT';
+}
+
 function extract_platform_post_id(string $platform, array $result): ?array {
     if (!($result['ok'] ?? false) || !isset($result['json'])) {
         return null;
@@ -947,6 +962,20 @@ function publish_to_threads(string $body, ?array $imageData = null): array {
         ];
     }
 
+    if ($tempInfo !== null) {
+        $containerStatus = threads_wait_for_container($creationId, $accessToken);
+        if ($containerStatus !== 'FINISHED') {
+            cleanup_threads_temp($tempInfo['path']);
+            return [
+                'ok' => false,
+                'error' => 'threads_container_not_ready',
+                'status' => $container['status'] ?? 0,
+                'json' => ['container_status' => $containerStatus],
+                'body' => '',
+            ];
+        }
+    }
+
     $publishResult = http_form_request($baseUrl . '/threads_publish', [
         'creation_id' => $creationId,
         'access_token' => $accessToken,
@@ -1044,6 +1073,20 @@ function reply_on_threads(string $body, string $parentId, ?array $imageData = nu
             'json' => $container['json'] ?? null,
             'body' => $container['body'] ?? '',
         ];
+    }
+
+    if ($tempInfo !== null) {
+        $containerStatus = threads_wait_for_container($creationId, $accessToken);
+        if ($containerStatus !== 'FINISHED') {
+            cleanup_threads_temp($tempInfo['path']);
+            return [
+                'ok' => false,
+                'error' => 'threads_container_not_ready',
+                'status' => $container['status'] ?? 0,
+                'json' => ['container_status' => $containerStatus],
+                'body' => '',
+            ];
+        }
     }
 
     $publishResult = http_form_request($baseUrl . '/threads_publish', [
