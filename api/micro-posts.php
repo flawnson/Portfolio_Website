@@ -636,11 +636,16 @@ function threads_fetch_permalink(string $threadId, string $accessToken): ?string
     return $permalink !== '' ? $permalink : null;
 }
 
-function threads_wait_for_container(string $containerId, string $accessToken, int $maxAttempts = 12): string {
+// Poll a Threads media container until it finishes server-side processing. Meta processes
+// the container (cURLing image_url) asynchronously, so we must wait for status=FINISHED
+// before publishing or the image is dropped. With a static image_url the container finishes
+// in ~1-3s, so this normally returns on the first or second attempt. Bounded tightly so a
+// stuck container can never stall the request: worst case ~ maxAttempts * (statusTimeout + sleep).
+function threads_wait_for_container(string $containerId, string $accessToken, int $maxAttempts = 8): string {
     $url = 'https://graph.threads.net/v1.0/' . rawurlencode($containerId)
         . '?fields=status,error_message&access_token=' . rawurlencode($accessToken);
     for ($i = 0; $i < $maxAttempts; $i++) {
-        $result = http_get_request($url);
+        $result = http_get_request($url, [], 4);
         $status = (string)($result['json']['status'] ?? '');
         error_log("Fwitter Threads container {$containerId} status attempt " . ($i + 1) . ": {$status}"
             . (isset($result['json']['error_message']) ? ' error_message=' . $result['json']['error_message'] : ''));
@@ -797,8 +802,12 @@ function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?ar
     }
     @chmod($filePath, 0644);
 
-    $sig = temp_image_sign($filename);
-    $url = 'https://flawnson.com/api/micro-posts.php?serve_temp_image=' . rawurlencode($filename) . '&sig=' . $sig;
+    // Serve the image as a plain static file. Meta cURLs image_url directly
+    // ("it must be on a public server"); a static file is served by the web server
+    // without invoking PHP, so it does not contend with this script's own worker
+    // while syndication runs. (The signed ?serve_temp_image= PHP route still exists
+    // as a fallback but must NOT be used here — it would re-enter PHP.)
+    $url = 'https://flawnson.com/api/uploads/' . rawurlencode($filename);
     error_log("Fwitter Threads temp image written: {$filePath} ({$written} bytes) served as {$url}");
     return ['url' => $url, 'path' => $filePath];
 }
