@@ -338,11 +338,16 @@ function gemini_response_details(array $response): array {
     return $details;
 }
 
-function route_micro_post_result(string $body): array {
+// $hasImage: when true the post carries an image. Threads is text-only here, so image
+// posts must never route to threads — they are routed to x or bluesky instead.
+function route_micro_post_result(string $body, bool $hasImage = false): array {
     $apiKey = config_string('geminiApiKey');
     if ($apiKey === '') {
         return ['ok' => false, 'error' => 'gemini_not_configured'];
     }
+
+    $allowThreads = !$hasImage;
+    $validPlatforms = $allowThreads ? ['x', 'bluesky', 'threads'] : ['x', 'bluesky'];
 
     $modelName = config_string('geminiModel', 'gemini-2.5-flash');
     $model = rawurlencode($modelName);
@@ -470,6 +475,19 @@ Input post:
 Return only the platform token. Valid outputs: x — bluesky — threads
 PROMPT;
 
+    if (!$allowThreads) {
+        $prompt = str_replace(
+            'Valid tokens: x, bluesky, threads',
+            "Valid tokens: x, bluesky\n\nHARD CONSTRAINT: This post has an image attached. The threads platform is NOT available for image posts. You MUST output only x or bluesky. Never output threads.",
+            $prompt
+        );
+        $prompt = str_replace(
+            'Return only the platform token. Valid outputs: x — bluesky — threads',
+            'Return only the platform token. Valid outputs: x — bluesky',
+            $prompt
+        );
+    }
+
     $response = http_json_request(
         "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent",
         ['x-goog-api-key: ' . $apiKey],
@@ -496,7 +514,6 @@ PROMPT;
 
     $text = gemini_response_text($response);
 
-    $validPlatforms = ['x', 'bluesky', 'threads'];
     $tokens = array_values(array_filter(array_map('trim', explode(',', $text))));
 
     $allValid = !empty($tokens) && count($tokens) === count(array_unique($tokens));
@@ -512,6 +529,19 @@ PROMPT;
     }
 
     if (!$allValid) {
+        // For image posts threads is excluded; rather than skip syndication entirely if the
+        // model misfires (e.g. returns "threads" anyway), fall back to x so the image still
+        // goes out somewhere image-capable.
+        if (!$allowThreads) {
+            error_log("Fwitter routing: image post produced invalid route '" . trim($text) . "', falling back to x");
+            return [
+                'ok' => true,
+                'platforms' => ['x'],
+                'raw_output' => $text,
+                'fallback' => true,
+                'response' => array_merge(http_result_summary($response), gemini_response_details($response)),
+            ];
+        }
         return [
             'ok' => false,
             'error' => 'invalid_route',
@@ -636,26 +666,6 @@ function threads_fetch_permalink(string $threadId, string $accessToken): ?string
     return $permalink !== '' ? $permalink : null;
 }
 
-// Poll a Threads media container until it finishes server-side processing. Meta processes
-// the container (cURLing image_url) asynchronously, so we must wait for status=FINISHED
-// before publishing or the image is dropped. With a static image_url the container finishes
-// in ~1-3s, so this normally returns on the first or second attempt. Bounded tightly so a
-// stuck container can never stall the request: worst case ~ maxAttempts * (statusTimeout + sleep).
-function threads_wait_for_container(string $containerId, string $accessToken, int $maxAttempts = 8): string {
-    $url = 'https://graph.threads.net/v1.0/' . rawurlencode($containerId)
-        . '?fields=status,error_message&access_token=' . rawurlencode($accessToken);
-    for ($i = 0; $i < $maxAttempts; $i++) {
-        $result = http_get_request($url, [], 4);
-        $status = (string)($result['json']['status'] ?? '');
-        error_log("Fwitter Threads container {$containerId} status attempt " . ($i + 1) . ": {$status}"
-            . (isset($result['json']['error_message']) ? ' error_message=' . $result['json']['error_message'] : ''));
-        if ($status === 'FINISHED') return 'FINISHED';
-        if ($status === 'ERROR' || $status === 'EXPIRED') return $status;
-        sleep(2); // background task; ignore_user_abort(true) is set at top of file
-    }
-    return 'TIMEOUT';
-}
-
 function extract_platform_post_id(string $platform, array $result): ?array {
     if (!($result['ok'] ?? false) || !isset($result['json'])) {
         return null;
@@ -767,55 +777,6 @@ function upload_image_to_bluesky(string $binaryData, string $mimeType, string $a
 
     $blob = $result['json']['blob'] ?? null;
     return is_array($blob) ? $blob : null;
-}
-
-function temp_image_sign(string $filename): string {
-    $secret = config_string('adminToken');
-    return hash_hmac('sha256', 'temp_image:' . $filename, $secret);
-}
-
-function upload_image_to_threads_temp(string $binaryData, string $mimeType): ?array {
-    $uploadsDir = '/home/flawhvna/public_html/api/uploads';
-    if (!is_dir($uploadsDir)) {
-        error_log("Fwitter Threads temp upload dir missing: {$uploadsDir}");
-        return null;
-    }
-    if (!is_writable($uploadsDir)) {
-        error_log("Fwitter Threads temp upload dir not writable: {$uploadsDir}");
-        return null;
-    }
-
-    $extMap = ['image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
-    $ext = $extMap[$mimeType] ?? 'jpg';
-    $filename = bin2hex(random_bytes(16)) . '.' . $ext;
-    $filePath = $uploadsDir . '/' . $filename;
-
-    $written = file_put_contents($filePath, $binaryData);
-    if ($written === false) {
-        error_log("Fwitter Threads temp file write failed: {$filePath}");
-        return null;
-    }
-    if ($written === 0) {
-        error_log("Fwitter Threads temp file wrote 0 bytes (empty image data): {$filePath}");
-        @unlink($filePath);
-        return null;
-    }
-    @chmod($filePath, 0644);
-
-    // Serve the image as a plain static file. Meta cURLs image_url directly
-    // ("it must be on a public server"); a static file is served by the web server
-    // without invoking PHP, so it does not contend with this script's own worker
-    // while syndication runs. (The signed ?serve_temp_image= PHP route still exists
-    // as a fallback but must NOT be used here — it would re-enter PHP.)
-    $url = 'https://flawnson.com/api/uploads/' . rawurlencode($filename);
-    error_log("Fwitter Threads temp image written: {$filePath} ({$written} bytes) served as {$url}");
-    return ['url' => $url, 'path' => $filePath];
-}
-
-function cleanup_threads_temp(string $filePath): void {
-    if (file_exists($filePath)) {
-        @unlink($filePath);
-    }
 }
 
 function publish_to_bluesky(string $body, ?array $imageData = null): array {
@@ -930,7 +891,10 @@ function publish_to_x(string $body, ?array $imageData = null): array {
     return http_json_request($url, [oauth1_header('POST', $url)], $payload);
 }
 
-function publish_to_threads(string $body, ?array $imageData = null): array {
+// Threads posts are always text-only. Image syndication is intentionally not supported
+// for Threads (it requires a publicly-cURLable image_url + async container processing);
+// images are syndicated to X and Bluesky only.
+function publish_to_threads(string $body): array {
     $userId = config_string('threadsUserId');
     $accessToken = config_string('threadsAccessToken');
 
@@ -940,28 +904,14 @@ function publish_to_threads(string $body, ?array $imageData = null): array {
 
     $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
 
-    $tempInfo = null;
-    $containerParams = ['text' => $body, 'access_token' => $accessToken];
-    if ($imageData !== null) {
-        $tempInfo = upload_image_to_threads_temp($imageData['binary'], $imageData['mime']);
-        if ($tempInfo !== null) {
-            $containerParams['media_type'] = 'IMAGE';
-            $containerParams['image_url'] = $tempInfo['url'];
-            error_log("Fwitter Threads IMAGE container: url={$tempInfo['url']} body_len=" . strlen($imageData['binary']));
-        } else {
-            $containerParams['media_type'] = 'TEXT';
-            error_log("Fwitter Threads IMAGE fallback to TEXT: upload_image_to_threads_temp returned null");
-        }
-    } else {
-        $containerParams['media_type'] = 'TEXT';
-    }
-
-    $container = http_form_request($baseUrl . '/threads', $containerParams, 30);
-    error_log("Fwitter Threads container result: ok=" . ($container['ok'] ? 'true' : 'false') . " status={$container['status']} body=" . truncate_text((string)($container['body'] ?? ''), 300));
+    $container = http_form_request($baseUrl . '/threads', [
+        'text' => $body,
+        'media_type' => 'TEXT',
+        'access_token' => $accessToken,
+    ], 30);
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
-        if ($tempInfo !== null) { cleanup_threads_temp($tempInfo['path']); }
         return [
             'ok' => false,
             'error' => 'threads_container_failed',
@@ -971,28 +921,10 @@ function publish_to_threads(string $body, ?array $imageData = null): array {
         ];
     }
 
-    if ($tempInfo !== null) {
-        $containerStatus = threads_wait_for_container($creationId, $accessToken);
-        if ($containerStatus !== 'FINISHED') {
-            cleanup_threads_temp($tempInfo['path']);
-            return [
-                'ok' => false,
-                'error' => 'threads_container_not_ready',
-                'status' => $container['status'] ?? 0,
-                'json' => ['container_status' => $containerStatus],
-                'body' => '',
-            ];
-        }
-    }
-
     $publishResult = http_form_request($baseUrl . '/threads_publish', [
         'creation_id' => $creationId,
         'access_token' => $accessToken,
     ]);
-
-    if ($tempInfo !== null) {
-        cleanup_threads_temp($tempInfo['path']);
-    }
 
     if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
         $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
@@ -1014,7 +946,7 @@ function publish_to_platform(string $platform, string $body, ?array $imageData =
     }
 
     if ($platform === 'threads') {
-        return publish_to_threads($body, $imageData);
+        return publish_to_threads($body);
     }
 
     return ['ok' => false, 'error' => 'invalid_platform'];
@@ -1046,7 +978,8 @@ function reply_on_x(string $body, string $parentTweetId, ?array $imageData = nul
     return http_json_request($url, [oauth1_header('POST', $url)], $payload);
 }
 
-function reply_on_threads(string $body, string $parentId, ?array $imageData = null): array {
+// Text-only, like publish_to_threads — Threads image syndication is not supported.
+function reply_on_threads(string $body, string $parentId): array {
     $userId = config_string('threadsUserId');
     $accessToken = config_string('threadsAccessToken');
 
@@ -1056,25 +989,15 @@ function reply_on_threads(string $body, string $parentId, ?array $imageData = nu
 
     $baseUrl = 'https://graph.threads.net/v1.0/' . rawurlencode($userId);
 
-    $tempInfo = null;
-    $containerParams = ['text' => $body, 'reply_to_id' => $parentId, 'access_token' => $accessToken];
-    if ($imageData !== null) {
-        $tempInfo = upload_image_to_threads_temp($imageData['binary'], $imageData['mime']);
-        if ($tempInfo !== null) {
-            $containerParams['media_type'] = 'IMAGE';
-            $containerParams['image_url'] = $tempInfo['url'];
-        } else {
-            $containerParams['media_type'] = 'TEXT';
-        }
-    } else {
-        $containerParams['media_type'] = 'TEXT';
-    }
-
-    $container = http_form_request($baseUrl . '/threads', $containerParams);
+    $container = http_form_request($baseUrl . '/threads', [
+        'text' => $body,
+        'reply_to_id' => $parentId,
+        'media_type' => 'TEXT',
+        'access_token' => $accessToken,
+    ]);
 
     $creationId = (string)($container['json']['id'] ?? '');
     if (!$container['ok'] || $creationId === '') {
-        if ($tempInfo !== null) { cleanup_threads_temp($tempInfo['path']); }
         return [
             'ok' => false,
             'error' => 'threads_container_failed',
@@ -1084,28 +1007,10 @@ function reply_on_threads(string $body, string $parentId, ?array $imageData = nu
         ];
     }
 
-    if ($tempInfo !== null) {
-        $containerStatus = threads_wait_for_container($creationId, $accessToken);
-        if ($containerStatus !== 'FINISHED') {
-            cleanup_threads_temp($tempInfo['path']);
-            return [
-                'ok' => false,
-                'error' => 'threads_container_not_ready',
-                'status' => $container['status'] ?? 0,
-                'json' => ['container_status' => $containerStatus],
-                'body' => '',
-            ];
-        }
-    }
-
     $publishResult = http_form_request($baseUrl . '/threads_publish', [
         'creation_id' => $creationId,
         'access_token' => $accessToken,
     ]);
-
-    if ($tempInfo !== null) {
-        cleanup_threads_temp($tempInfo['path']);
-    }
 
     if (($publishResult['ok'] ?? false) && isset($publishResult['json']['id'])) {
         $permalink = threads_fetch_permalink((string)$publishResult['json']['id'], $accessToken);
@@ -1211,7 +1116,7 @@ function syndicate_micro_post(string $body, int $postId, ?array $imageData = nul
         ];
     }
 
-    $route = route_micro_post_result($body);
+    $route = route_micro_post_result($body, $imageData !== null);
     if (!($route['ok'] ?? false)) {
         error_log("Fwitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
         return [
@@ -1335,7 +1240,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to threads skipped for post {$replyPostId}: no threads.post_id in parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_threads($syndicationBody, $parentThreadsId, $imageData);
+            $result = reply_on_threads($syndicationBody, $parentThreadsId);
         } elseif ($platform === 'bluesky') {
             $parentUri = (string)($rawIds['bluesky']['uri'] ?? '');
             $parentCid = (string)($rawIds['bluesky']['cid'] ?? '');
@@ -1499,80 +1404,6 @@ function handle_syndication_debug(): void {
     $debug['publish'] = ['platforms' => $platforms, 'results' => $publishResults];
 
     respond(200, $debug);
-}
-
-if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["serve_temp_image"])) {
-    $filename = basename((string)($_GET['serve_temp_image'] ?? ''));
-    $sig = (string)($_GET['sig'] ?? '');
-
-    if ($filename === '' || !hash_equals(temp_image_sign($filename), $sig)) {
-        http_response_code(403);
-        exit;
-    }
-
-    $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-    if (!in_array($ext, $allowedExts, true)) {
-        http_response_code(403);
-        exit;
-    }
-
-    $filePath = '/home/flawhvna/public_html/api/uploads/' . $filename;
-    if (!is_file($filePath) || !is_readable($filePath)) {
-        http_response_code(404);
-        exit;
-    }
-
-    $mimeMap = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
-    $mime = $mimeMap[$ext] ?? 'image/jpeg';
-
-    header('Content-Type: ' . $mime);
-    header('Content-Length: ' . filesize($filePath));
-    header('Cache-Control: no-store');
-    readfile($filePath);
-    exit;
-}
-
-if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET["uploads_diag"])) {
-    require_admin_token();
-    $uploadsDir = '/home/flawhvna/public_html/api/uploads';
-    $keep = isset($_GET['keep']);
-    $diag = [
-        'dir' => $uploadsDir,
-        'exists' => is_dir($uploadsDir),
-        'writable' => is_writable($uploadsDir),
-    ];
-    if ($diag['writable']) {
-        $testFilename = 'diag_' . bin2hex(random_bytes(8)) . '.jpg';
-        $testFile = $uploadsDir . '/' . $testFilename;
-        // Minimal valid 1x1 white JPEG
-        $minJpeg = base64_decode(
-            '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U'
-            . 'HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgN'
-            . 'DRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy'
-            . 'MjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIhAAAQQC'
-            . 'AgMAAAAAAAAAAAAAAQIDBBEhBRIxQf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAA'
-            . 'AAAAAAAAAAAAAP/aAAwDAQACEQMRAD8Amab1pRNQRQRZWVHXlJSlKUpSlKUpSlKUpSlKUpSl'
-            . 'KX//2Q=='
-        );
-        $wrote = file_put_contents($testFile, $minJpeg);
-        $diag['write_bytes'] = $wrote;
-        if ($wrote !== false) {
-            @chmod($testFile, 0644);
-            $diag['readable_after_write'] = is_readable($testFile);
-            $perms = fileperms($testFile);
-            $diag['file_perms'] = $perms !== false ? sprintf('%04o', $perms & 0777) : null;
-            $diag['test_url'] = 'https://flawnson.com/api/uploads/' . $testFilename;
-            if (!$keep) {
-                @unlink($testFile);
-                $diag['kept'] = false;
-            } else {
-                $diag['kept'] = true;
-                $diag['note'] = 'Test file left on disk. DELETE it when done: curl -X DELETE with ?id= or just unlink manually.';
-            }
-        }
-    }
-    respond(200, $diag);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_debug"])) {
