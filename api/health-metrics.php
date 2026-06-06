@@ -55,6 +55,24 @@ $dataType = trim((string) ($_GET['dataType'] ?? ''));
 $cacheTtl = 300; // 5 minutes
 
 try {
+    // TEMPORARY debug: returns the raw Google `list` response for one data type
+    // so the exact dataPoint structure can be inspected, then removed.
+    if (($_GET['debug'] ?? '') === 'raw') {
+        $dbgType = health_clean_data_type((string) ($_GET['dataType'] ?? 'steps'));
+        $tok = health_get_access_token();
+        if (!$tok['ok']) {
+            health_respond(409, ['ok' => false, 'error' => $tok['error']]);
+        }
+        $raw = health_fetch_data_type_raw($tok['access_token'], $dbgType, (int) ($_GET['pageSize'] ?? 5));
+        health_respond($raw['ok'] ? 200 : ($raw['status'] ?: 502), [
+            'ok'       => $raw['ok'],
+            'dataType' => $dbgType,
+            'status'   => $raw['status'],
+            'error'    => $raw['error'],
+            'raw'      => $raw['json'],
+        ]);
+    }
+
     if ($resource !== '') {
         health_handle_resource($resource, $cacheTtl);
     } elseif ($dataType !== '') {
@@ -133,37 +151,22 @@ function health_civil_range(): array {
 }
 
 /**
- * Fetches daily-aggregated points for one data type via the :dailyRollUp method
- * and returns normalized rows.
+ * Fetches data points for one data type via the universal `list` method (the one
+ * method every data type supports) and returns normalized rows.
  * Returns ['ok'=>bool, 'metrics'=>array, 'status'=>int, 'error'=>string].
  */
-function health_fetch_data_type(string $accessToken, string $dataType, array $startCivil, array $endCivil): array {
+function health_fetch_data_type(string $accessToken, string $dataType, int $pageSize = 100): array {
     $clean = health_clean_data_type($dataType);
     if ($clean === '') {
         return ['ok' => false, 'metrics' => [], 'status' => 400, 'error' => 'invalid_data_type'];
     }
 
-    $userId = rawurlencode(health_user_id());
-    $url = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints:dailyRollUp";
-
-    $payload = [
-        'range'          => ['start' => $startCivil, 'end' => $endCivil],
-        'windowSizeDays' => 1,
-        'pageSize'       => 1000,
-    ];
-
-    $res = health_http_post_json($url, health_bearer_headers($accessToken), $payload);
-
-    if (!$res['ok']) {
-        // 401/403 mid-flight usually means the token/scopes went bad.
-        if (in_array($res['status'], [401, 403], true)) {
-            return ['ok' => false, 'metrics' => [], 'status' => $res['status'], 'error' => 'needs_reauth'];
-        }
-        $apiError = $res['json']['error']['message'] ?? ($res['json']['error'] ?? $res['error']);
-        return ['ok' => false, 'metrics' => [], 'status' => $res['status'] ?: 502, 'error' => (string) $apiError];
+    $raw = health_fetch_data_type_raw($accessToken, $clean, $pageSize);
+    if (!$raw['ok']) {
+        return ['ok' => false, 'metrics' => [], 'status' => $raw['status'], 'error' => $raw['error']];
     }
 
-    $points = $res['json']['rollupDataPoints'] ?? [];
+    $points = $raw['json']['dataPoints'] ?? ($raw['json']['point'] ?? []);
     if (!is_array($points)) {
         $points = [];
     }
@@ -171,11 +174,34 @@ function health_fetch_data_type(string $accessToken, string $dataType, array $st
     $metrics = [];
     foreach ($points as $p) {
         if (is_array($p)) {
-            $metrics[] = health_normalize_rollup_point($clean, $p);
+            $metrics[] = health_normalize_point($clean, $p);
         }
     }
 
     return ['ok' => true, 'metrics' => $metrics, 'status' => 200, 'error' => ''];
+}
+
+/**
+ * Raw `list` call for one data type. Returns the decoded Google response so the
+ * debug path can inspect the real structure.
+ * Returns ['ok'=>bool, 'json'=>array|null, 'status'=>int, 'error'=>string].
+ */
+function health_fetch_data_type_raw(string $accessToken, string $clean, int $pageSize): array {
+    $userId = rawurlencode(health_user_id());
+    $url = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints?"
+        . http_build_query(['pageSize' => $pageSize]);
+
+    $res = health_http_get($url, health_bearer_headers($accessToken));
+
+    if (!$res['ok']) {
+        if (in_array($res['status'], [401, 403], true)) {
+            return ['ok' => false, 'json' => $res['json'], 'status' => $res['status'], 'error' => 'needs_reauth'];
+        }
+        $apiError = $res['json']['error']['message'] ?? ($res['json']['error'] ?? $res['error']);
+        return ['ok' => false, 'json' => $res['json'], 'status' => $res['status'] ?: 502, 'error' => (string) $apiError];
+    }
+
+    return ['ok' => true, 'json' => $res['json'], 'status' => 200, 'error' => ''];
 }
 
 /**
@@ -226,7 +252,7 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
         health_serve_snapshot_or_error($snapshotKey, $tok['error'], 502);
     }
 
-    $result = health_fetch_data_type($tok['access_token'], $clean, $startCivil, $endCivil);
+    $result = health_fetch_data_type($tok['access_token'], $clean);
     if (!$result['ok']) {
         if ($result['error'] === 'needs_reauth') {
             health_serve_snapshot_or_error($snapshotKey, 'needs_reauth', 409);
@@ -271,7 +297,7 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
     $metrics = [];
     $errors  = [];
     foreach ($dataTypes as $dt) {
-        $result = health_fetch_data_type($accessToken, (string) $dt, $startCivil, $endCivil);
+        $result = health_fetch_data_type($accessToken, (string) $dt);
         if ($result['ok']) {
             foreach ($result['metrics'] as $m) {
                 $metrics[] = $m;
