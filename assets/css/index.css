@@ -172,3 +172,50 @@ input:checked + .slider:before {
     opacity: 0.65;
     margin: 0 6px;
 }
+
+/* Health section (left sidebar) */
+.health-section h2 {
+    font-size: 1.25rem;
+}
+
+.health-week {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 14px;
+    font-size: 1.5rem;
+}
+
+.health-day-on {
+    color: #f46e00;
+}
+
+.health-day-off {
+    color: #ccc;
+}
+
+.health-sleep {
+    font-size: 0.95rem;
+}
+
+.health-sleep i {
+    color: #f46e00;
+    margin-right: 4px;
+}
+
+.health-sleep-label,
+.health-loading {
+    color: grey;
+}
+
+/* Dark mode */
+body.dark-mode .health-day-off {
+    color: #555;
+}
+
+body.dark-mode .health-day-label,
+body.dark-mode .health-sleep-label,
+body.dark-mode .health-loading {
+    color: #aaa;
+}

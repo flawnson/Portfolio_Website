@@ -84,11 +84,38 @@ check('list end (RFC3339)', $nl['end'], '2026-06-06T20:55:00Z');
 check('list value (string "20" -> 20)', $nl['value'], 20);
 check('list source', $nl['source'], 'FITBIT');
 
+check('list date field', $nl['date'], '2026-06-06');
+
 echo "\n=== 7. Method routing ===\n";
 check('steps -> rollup', health_method_for('steps'), 'rollup');
 check('heart-rate -> rollup', health_method_for('heart-rate'), 'rollup');
 check('sleep -> list', health_method_for('sleep'), 'list');
 check('daily-resting-heart-rate -> list', health_method_for('daily-resting-heart-rate'), 'list');
+check('exercise -> list', health_method_for('exercise'), 'list');
+
+echo "\n=== 8. Sleep -> minutesAsleep as value ===\n";
+$sleepPoint = [
+    'dataSource' => ['platform' => 'FITBIT'],
+    'sleep'      => [
+        'interval' => [
+            'startTime'      => '2026-06-06T06:21:00Z',
+            'endTime'        => '2026-06-06T14:23:00Z',
+            'civilStartTime' => ['date' => ['year' => 2026, 'month' => 6, 'day' => 6], 'time' => ['hours' => 2, 'minutes' => 21]],
+        ],
+        'type'    => 'STAGES',
+        'summary' => ['minutesAsleep' => '469', 'minutesInSleepPeriod' => '482'],
+    ],
+];
+$ns = health_normalize_list_point('sleep', $sleepPoint);
+check('sleep value = minutesAsleep', $ns['value'], 469);
+check('sleep unit', $ns['unit'], 'minutes');
+check('sleep date (civil)', $ns['date'], '2026-06-06');
+
+echo "\n=== 9. h:mm formatting (mirror of frontend) ===\n";
+$hm = function (int $min): string { return intdiv($min, 60) . ':' . str_pad((string)($min % 60), 2, '0', STR_PAD_LEFT); };
+check('469 -> 7:49', $hm(469), '7:49');
+check('60 -> 1:00', $hm(60), '1:00');
+check('5 -> 0:05', $hm(5), '0:05');
 
 echo "\n" . ($fail === 0 ? "ALL PASSED ✅" : "{$fail} FAILED ❌") . "\n";
 exit($fail === 0 ? 0 : 1);

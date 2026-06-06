@@ -32,20 +32,6 @@ require __DIR__ . '/health-common.php';
 // Tests define this to load the functions below without firing the web dispatch.
 if (!defined('HEALTH_METRICS_NO_DISPATCH')) {
 
-// TEMPORARY: surface uncatchable fatals (timeout/memory/runtime) as JSON so we
-// can diagnose the 500s. Remove once resolved.
-register_shutdown_function(function () {
-    $e = error_get_last();
-    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_COMPILE_ERROR, E_CORE_ERROR, E_RECOVERABLE_ERROR], true)) {
-        // Return 200 so the CDN doesn't swallow the body with its own error page.
-        if (!headers_sent()) {
-            http_response_code(200);
-            header('Content-Type: application/json; charset=utf-8');
-        }
-        echo json_encode(['ok' => false, 'error' => 'fatal', 'debug' => $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']]);
-    }
-});
-
 health_send_cors_headers();
 health_load_config();
 
@@ -60,13 +46,15 @@ $DEFAULT_DATA_TYPES = [
     'heart-rate',
     'daily-resting-heart-rate',
     'sleep',
+    'exercise',
 ];
 
 $resource = $_GET['resource'] ?? '';
 $dataType = trim((string) ($_GET['dataType'] ?? ''));
 
-// Short cache so public homepage traffic doesn't hammer the API / hit limits.
-$cacheTtl = 300; // 5 minutes
+// Cache so public homepage traffic doesn't hammer the API / hit limits. Health
+// data changes slowly, so a longer TTL also keeps the slow cache-miss path rare.
+$cacheTtl = 1800; // 30 minutes
 
 try {
     if ($resource !== '') {
@@ -77,10 +65,8 @@ try {
         health_handle_bundle($DEFAULT_DATA_TYPES, $cacheTtl);
     }
 } catch (Throwable $e) {
-    error_log('health-metrics fatal: ' . $e->getMessage());
-    // TEMPORARY: 200 + message so the CDN passes the body through. Remove once resolved.
-    health_respond(200, ['ok' => false, 'error' => 'internal_error',
-        'debug' => $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine()]);
+    error_log('health-metrics fatal: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    health_respond(500, ['ok' => false, 'error' => 'internal_error']);
 }
 
 } // end web-dispatch guard
@@ -152,7 +138,7 @@ function health_method_for(string $cleanType): string {
     // Data types that don't support :dailyRollUp — fetched via `list`. Everything
     // else uses :dailyRollUp for clean daily aggregates. (static local, not a
     // file-level const, so it's available even when the dispatch runs mid-load.)
-    static $listOnly = ['sleep', 'daily-resting-heart-rate'];
+    static $listOnly = ['sleep', 'daily-resting-heart-rate', 'exercise'];
     return in_array($cleanType, $listOnly, true) ? 'list' : 'rollup';
 }
 
@@ -220,7 +206,7 @@ function health_fetch_rollup(string $accessToken, string $clean, int $days): arr
  * pages the API returns until a batch of points is collected (or caps out), then
  * normalizes. Suited to low-volume types (sleep, resting heart rate).
  */
-function health_fetch_list(string $accessToken, string $clean, int $pageSize = 50, int $maxPages = 15): array {
+function health_fetch_list(string $accessToken, string $clean, int $pageSize = 100, int $maxPages = 8): array {
     $userId = rawurlencode(health_user_id());
     $base   = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints";
 
@@ -253,6 +239,22 @@ function health_fetch_list(string $accessToken, string $clean, int $pageSize = 5
         }
     }
     return ['ok' => true, 'metrics' => $metrics, 'status' => 200, 'error' => ''];
+}
+
+/**
+ * Drops the verbose `raw` field from each metric unless ?include_raw=1 is set.
+ * Keeps the public payload small (raw bloats it ~20x) while leaving raw available
+ * for debugging on demand.
+ */
+function health_present_metrics(array $metrics): array {
+    if (($_GET['include_raw'] ?? '') === '1') {
+        return $metrics;
+    }
+    foreach ($metrics as &$m) {
+        unset($m['raw']);
+    }
+    unset($m);
+    return $metrics;
 }
 
 /**
@@ -314,7 +316,7 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
 
     $payload = [
         'ok'      => true,
-        'metrics' => $result['metrics'],
+        'metrics' => health_present_metrics($result['metrics']),
         'meta'    => [
             'dataType' => $clean,
             'range'    => ['start' => $startCivil, 'end' => $endCivil],
@@ -364,12 +366,14 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
 
     $payload = [
         'ok'      => true,
-        'metrics' => $metrics,
+        'metrics' => health_present_metrics($metrics),
         'meta'    => [
             'range'      => ['start' => $startCivil, 'end' => $endCivil],
             'days'       => $days,
             'dataTypes'  => $dataTypes,
             'count'      => count($metrics),
+            'build'      => 'health-v2-workouts',
+            'step_goal'  => (int) health_config_string('googleHealthStepGoal', '10000'),
             'stale'      => false,
             'as_of'      => gmdate('Y-m-d\TH:i:s\Z'),
             'partial_errors' => $errors ?: null,

@@ -172,63 +172,78 @@ function getHealthMetricsUrl() {
     return `${getApiBaseUrl()}/api/health-metrics.php`;
 }
 
-function formatHealthLabel(dataType) {
-    return String(dataType)
-        .replace(/[_\-.]+/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+function pad2(n) {
+    return String(n).padStart(2, "0");
 }
 
-// Minimal renderer: groups normalized points by dataType and shows the latest
-// value per type. Intentionally simple — the backend is the flexible part.
+// Local YYYY-MM-DD key, matching the server's civil (local) dates.
+function localDateKey(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Minutes -> "h:mm" (e.g. 469 -> "7:49").
+function formatHoursMinutes(minutes) {
+    const total = Math.max(0, Math.round(Number(minutes) || 0));
+    return `${Math.floor(total / 60)}:${pad2(total % 60)}`;
+}
+
+// Renders the past 7 days (excluding today) as worked-out (step goal hit OR a
+// workout logged) vs rest circles, plus the most recent night's time asleep.
 function renderHealthPanel(metrics, meta) {
     const root = document.getElementById("health-panel");
     if (!root) return;
 
-    if (!Array.isArray(metrics) || !metrics.length) {
-        root.innerHTML = "<p>No health data synced yet.</p>";
-        return;
-    }
+    metrics = Array.isArray(metrics) ? metrics : [];
+    const stepGoalRaw = meta && Number(meta.step_goal);
+    const stepGoal = Number.isFinite(stepGoalRaw) && stepGoalRaw > 0 ? stepGoalRaw : 10000;
 
-    const latestByType = new Map();
+    const stepsByDate = {};
+    const exerciseDates = new Set();
+    let sleepMinutes = null;
+    let sleepEndTs = -1;
+
     for (const m of metrics) {
-        if (!m || m.value == null) continue;
-        const key = m.dataType;
-        const ts = new Date(m.end || m.start || 0).getTime();
-        const prev = latestByType.get(key);
-        if (!prev || ts >= prev.ts) {
-            latestByType.set(key, { ...m, ts });
+        if (!m) continue;
+        if (m.dataType === "steps" && m.date) {
+            const v = Number(m.value);
+            if (Number.isFinite(v)) stepsByDate[m.date] = v;
+        } else if (m.dataType === "exercise" && m.date) {
+            exerciseDates.add(m.date);
+        } else if (m.dataType === "sleep") {
+            const v = Number(m.value);
+            const ts = new Date(m.end || m.start || 0).getTime();
+            if (Number.isFinite(v) && v > 0 && Number.isFinite(ts) && ts >= sleepEndTs) {
+                sleepEndTs = ts;
+                sleepMinutes = v;
+            }
         }
     }
 
-    if (!latestByType.size) {
-        root.innerHTML = "<p>No health data synced yet.</p>";
-        return;
+    // Past 7 days, oldest -> yesterday (today excluded).
+    const today = new Date();
+    const circles = [];
+    for (let i = 7; i >= 1; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const key = localDateKey(d);
+        const workedOut =
+            (stepsByDate[key] != null && stepsByDate[key] >= stepGoal) ||
+            exerciseDates.has(key);
+        const iconClass = workedOut
+            ? "fas fa-check-circle health-day-on"
+            : "far fa-circle health-day-off";
+        circles.push(
+            `<i class="${iconClass}" title="${key}: ${workedOut ? "worked out" : "rest"}" aria-label="${key}: ${workedOut ? "worked out" : "rest"}"></i>`
+        );
     }
 
-    const rows = [...latestByType.values()].map((m) => {
-        const label = escapeHtml(formatHealthLabel(m.dataType));
-        const value = escapeHtml(String(m.value));
-        const unit = m.unit ? ` ${escapeHtml(String(m.unit))}` : "";
-        const when = m.end || m.start ? formatRelativeTime(m.end || m.start) : "";
-        return `
-            <li style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0.35rem 0;border-bottom:1px solid #eee;">
-                <span>${label}</span>
-                <span><strong>${value}</strong>${unit}${when ? ` <small style="opacity:0.6;">${escapeHtml(when)}</small>` : ""}</span>
-            </li>`;
-    }).join("");
+    const sleepHtml = Number.isFinite(sleepMinutes)
+        ? `<div class="health-sleep"><i class="fas fa-bed" aria-hidden="true"></i> <strong>${formatHoursMinutes(sleepMinutes)}</strong> <span class="health-sleep-label">slept</span></div>`
+        : `<div class="health-sleep"><i class="fas fa-bed" aria-hidden="true"></i> <span class="health-sleep-label">no recent sleep data</span></div>`;
 
-    let footnote = "";
-    if (meta && meta.as_of) {
-        const asOf = formatRelativeTime(meta.as_of);
-        const stale = meta.stale
-            ? " · reconnecting…"
-            : "";
-        if (asOf) {
-            footnote = `<small style="opacity:0.6;display:block;margin-top:0.4rem;">as of ${escapeHtml(asOf)}${stale}</small>`;
-        }
-    }
-
-    root.innerHTML = `<ul style="list-style:none;padding-left:0;margin:0;">${rows}</ul>${footnote}`;
+    root.innerHTML = `
+        <div class="health-week" role="group" aria-label="Workouts over the past 7 days (excluding today)">${circles.join("")}</div>
+        ${sleepHtml}`;
 }
 
 async function loadHealthMetrics() {
@@ -236,7 +251,9 @@ async function loadHealthMetrics() {
     if (!root) return;
 
     try {
-        const data = await fetchJsonWithTimeout(getHealthMetricsUrl(), 6000);
+        // Longer timeout: a cold cache-miss does several sequential Google calls.
+        // Subsequent loads hit the 30-min server cache and return in ~0.5s.
+        const data = await fetchJsonWithTimeout(getHealthMetricsUrl(), 15000);
         renderHealthPanel(data.metrics || [], data.meta || {});
     } catch (err) {
         console.error(err);

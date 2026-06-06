@@ -547,6 +547,7 @@ function health_normalize_rollup_point(string $dataType, array $point): array {
     return [
         'dataType' => $dataType,
         'metric'   => $metricKey,
+        'date'     => is_string($start) ? substr($start, 0, 10) : null,
         'start'    => $start,
         'end'      => $end,
         'value'    => $value,
@@ -620,23 +621,35 @@ function health_normalize_list_point(string $dataType, array $point): array {
         }
     }
 
-    $start = $end = $value = $unit = null;
+    $start = $end = $value = $unit = $civilDate = null;
     if (is_array($metricObj)) {
         $interval = $metricObj['interval'] ?? null;
         $sample   = $metricObj['sampleTime'] ?? null;
         if (is_array($interval)) {
             $start = $interval['startTime'] ?? health_civil_to_string($interval['civilStartTime'] ?? null);
             $end   = $interval['endTime']   ?? health_civil_to_string($interval['civilEndTime'] ?? null);
+            // Local civil date (handles evening workouts in negative UTC offsets).
+            $civilDate = health_civil_to_string($interval['civilStartTime'] ?? null);
         } elseif (is_array($sample)) {
             $start = $sample['physicalTime'] ?? health_civil_to_string($sample['civilTime'] ?? null);
             $end   = $start;
+            $civilDate = health_civil_to_string($sample['civilTime'] ?? null);
         }
         [$value, $unit] = health_pick_list_value($metricObj);
+
+        // Sleep: surface the actual time asleep (minutes) instead of the stage enum.
+        if ($metricKey === 'sleep' && isset($metricObj['summary']['minutesAsleep'])) {
+            $value = (int) $metricObj['summary']['minutesAsleep'];
+            $unit  = 'minutes';
+        }
     }
+
+    $date = $civilDate ? substr($civilDate, 0, 10) : (is_string($start) ? substr($start, 0, 10) : null);
 
     return [
         'dataType' => $dataType,
         'metric'   => $metricKey,
+        'date'     => $date,
         'start'    => $start,
         'end'      => $end,
         'value'    => $value,
