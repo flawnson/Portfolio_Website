@@ -37,8 +37,9 @@ if (!defined('HEALTH_METRICS_NO_DISPATCH')) {
 register_shutdown_function(function () {
     $e = error_get_last();
     if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_COMPILE_ERROR, E_CORE_ERROR, E_RECOVERABLE_ERROR], true)) {
+        // Return 200 so the CDN doesn't swallow the body with its own error page.
         if (!headers_sent()) {
-            http_response_code(500);
+            http_response_code(200);
             header('Content-Type: application/json; charset=utf-8');
         }
         echo json_encode(['ok' => false, 'error' => 'fatal', 'debug' => $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']]);
@@ -77,8 +78,8 @@ try {
     }
 } catch (Throwable $e) {
     error_log('health-metrics fatal: ' . $e->getMessage());
-    // TEMPORARY: include the message to diagnose the 500s. Remove once resolved.
-    health_respond(500, ['ok' => false, 'error' => 'internal_error',
+    // TEMPORARY: 200 + message so the CDN passes the body through. Remove once resolved.
+    health_respond(200, ['ok' => false, 'error' => 'internal_error',
         'debug' => $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine()]);
 }
 
