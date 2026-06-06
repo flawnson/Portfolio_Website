@@ -557,22 +557,107 @@ function health_normalize_rollup_point(string $dataType, array $point): array {
 }
 
 /**
- * Picks the most representative scalar from a RollupValue bag whose fields look
- * like "{field}_{aggregation}" (e.g. count_sum, bpm_avg). Preference order:
- * *_sum, *_avg, *_last, *_max, *_min, then the first scalar found.
+ * Picks the most representative scalar from a RollupValue bag whose fields are
+ * named "{field}{Aggregation}" (e.g. countSum, bpmAvg) — also tolerates the
+ * snake_case form (count_sum). Matching is case-insensitive and underscore-
+ * insensitive. Preference: Sum, Avg/Average/Mean, Last/Latest, Max, Min, then
+ * the first numeric scalar found.
  */
 function health_pick_rollup_value(array $bag): array {
     $unit = $bag['unit'] ?? null;
-    foreach (['_sum', '_avg', '_average', '_last', '_latest', '_max', '_min'] as $suffix) {
+    $numeric = function ($v) {
+        if (is_int($v) || is_float($v)) {
+            return $v;
+        }
+        if (is_string($v) && is_numeric($v)) {
+            return $v + 0;
+        }
+        return null;
+    };
+
+    foreach (['sum', 'average', 'mean', 'avg', 'latest', 'last', 'max', 'min'] as $suffix) {
         foreach ($bag as $k => $v) {
-            if (is_string($k) && substr($k, -strlen($suffix)) === $suffix && (is_int($v) || is_float($v))) {
-                return [$v, $unit];
+            if (!is_string($k)) {
+                continue;
+            }
+            $normalized = strtolower(str_replace('_', '', $k));
+            if (substr($normalized, -strlen($suffix)) === $suffix) {
+                $n = $numeric($v);
+                if ($n !== null) {
+                    return [$n, $unit];
+                }
             }
         }
     }
-    foreach ($bag as $v) {
-        if (is_int($v) || is_float($v) || is_string($v)) {
+    foreach ($bag as $k => $v) {
+        if ($k === 'unit') {
+            continue;
+        }
+        $n = $numeric($v);
+        if ($n !== null) {
+            return [$n, $unit];
+        }
+    }
+    return [null, $unit];
+}
+
+/**
+ * Normalizes a `list` dataPoint into the same flat shape as the rollup points.
+ * Real structure: { dataSource:{...}, <metric>: { interval:{startTime,endTime,
+ * civilStartTime,...} | sampleTime:{...}, <valueField>: <scalar> } }.
+ */
+function health_normalize_list_point(string $dataType, array $point): array {
+    $metricKey = null;
+    $metricObj = null;
+    foreach ($point as $k => $v) {
+        if ($k === 'dataSource' || $k === 'origin') {
+            continue;
+        }
+        if (is_array($v)) {
+            $metricKey = $k;
+            $metricObj = $v;
+            break;
+        }
+    }
+
+    $start = $end = $value = $unit = null;
+    if (is_array($metricObj)) {
+        $interval = $metricObj['interval'] ?? null;
+        $sample   = $metricObj['sampleTime'] ?? null;
+        if (is_array($interval)) {
+            $start = $interval['startTime'] ?? health_civil_to_string($interval['civilStartTime'] ?? null);
+            $end   = $interval['endTime']   ?? health_civil_to_string($interval['civilEndTime'] ?? null);
+        } elseif (is_array($sample)) {
+            $start = $sample['physicalTime'] ?? health_civil_to_string($sample['civilTime'] ?? null);
+            $end   = $start;
+        }
+        [$value, $unit] = health_pick_list_value($metricObj);
+    }
+
+    return [
+        'dataType' => $dataType,
+        'metric'   => $metricKey,
+        'start'    => $start,
+        'end'      => $end,
+        'value'    => $value,
+        'unit'     => $unit,
+        'source'   => $point['dataSource']['platform'] ?? null,
+        'raw'      => $point,
+    ];
+}
+
+/** Extracts the value scalar from a list point's metric object (skips time containers). */
+function health_pick_list_value(array $obj): array {
+    $unit = $obj['unit'] ?? null;
+    foreach ($obj as $k => $v) {
+        if (in_array($k, ['interval', 'sampleTime', 'unit'], true)) {
+            continue;
+        }
+        if (is_int($v) || is_float($v)) {
             return [$v, $unit];
+        }
+        if (is_string($v)) {
+            return [is_numeric($v) ? $v + 0 : $v, $unit];
         }
     }
     return [null, $unit];
