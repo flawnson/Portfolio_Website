@@ -148,12 +148,12 @@ function health_civil_range(): array {
     return [$toCivil($startTs), $toCivil($endTs), $days];
 }
 
-// Data types that don't support :dailyRollUp — fetched via the `list` method.
-// Everything else uses :dailyRollUp for clean daily aggregates.
-const HEALTH_LIST_ONLY_TYPES = ['sleep', 'daily-resting-heart-rate'];
-
 function health_method_for(string $cleanType): string {
-    return in_array($cleanType, HEALTH_LIST_ONLY_TYPES, true) ? 'list' : 'rollup';
+    // Data types that don't support :dailyRollUp — fetched via `list`. Everything
+    // else uses :dailyRollUp for clean daily aggregates. (static local, not a
+    // file-level const, so it's available even when the dispatch runs mid-load.)
+    static $listOnly = ['sleep', 'daily-resting-heart-rate'];
+    return in_array($cleanType, $listOnly, true) ? 'list' : 'rollup';
 }
 
 /**
