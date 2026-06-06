@@ -29,6 +29,9 @@ declare(strict_types=1);
 
 require __DIR__ . '/health-common.php';
 
+// Tests define this to load the functions below without firing the web dispatch.
+if (!defined('HEALTH_METRICS_NO_DISPATCH')) {
+
 health_send_cors_headers();
 health_load_config();
 
@@ -63,6 +66,8 @@ try {
     error_log('health-metrics fatal: ' . $e->getMessage());
     health_respond(500, ['ok' => false, 'error' => 'internal_error']);
 }
+
+} // end web-dispatch guard
 
 // ---------------------------------------------------------------------------
 
