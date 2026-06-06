@@ -251,17 +251,20 @@ function health_debug_probe(string $accessToken, string $clean): array {
         'sample'        => is_array($points) ? array_slice($points, 0, 2) : null,
     ];
 
-    // (3) Minimal dailyRollUp (range only) for the last week — to see if the
-    // optional windowSizeDays/pageSize args were the "Invalid argument".
+    // (3) dailyRollUp with windowSizeDays=1 (the fix) for the last week, plus a
+    // pageSize variant, returning the full response so we can see rollupDataPoints.
     $end   = strtotime(gmdate('Y-m-d') . ' UTC') + 86400;
     $start = $end - (8 * 86400);
     $civil = function (int $ts): array {
         return ['date' => ['year' => (int) gmdate('Y', $ts), 'month' => (int) gmdate('n', $ts), 'day' => (int) gmdate('j', $ts)]];
     };
-    $rb = health_http_post_json($base . ':dailyRollUp', $headers, [
-        'range' => ['start' => $civil($start), 'end' => $civil($end)],
-    ]);
-    $out['rollup_minimal'] = ['status' => $rb['status'], 'json' => $rb['json']];
+    $range = ['start' => $civil($start), 'end' => $civil($end)];
+
+    $rA = health_http_post_json($base . ':dailyRollUp', $headers, ['range' => $range, 'windowSizeDays' => 1]);
+    $out['rollup_windowSize1'] = ['status' => $rA['status'], 'json' => $rA['json']];
+
+    $rB = health_http_post_json($base . ':dailyRollUp', $headers, ['range' => $range, 'windowSizeDays' => 1, 'pageSize' => 100]);
+    $out['rollup_windowSize1_pageSize'] = ['status' => $rB['status'], 'json' => $rB['json']];
 
     return $out;
 }
