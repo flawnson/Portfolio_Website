@@ -32,6 +32,19 @@ require __DIR__ . '/health-common.php';
 // Tests define this to load the functions below without firing the web dispatch.
 if (!defined('HEALTH_METRICS_NO_DISPATCH')) {
 
+// TEMPORARY: surface uncatchable fatals (timeout/memory/runtime) as JSON so we
+// can diagnose the 500s. Remove once resolved.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_COMPILE_ERROR, E_CORE_ERROR, E_RECOVERABLE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => 'fatal', 'debug' => $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']]);
+    }
+});
+
 health_send_cors_headers();
 health_load_config();
 
@@ -64,7 +77,9 @@ try {
     }
 } catch (Throwable $e) {
     error_log('health-metrics fatal: ' . $e->getMessage());
-    health_respond(500, ['ok' => false, 'error' => 'internal_error']);
+    // TEMPORARY: include the message to diagnose the 500s. Remove once resolved.
+    health_respond(500, ['ok' => false, 'error' => 'internal_error',
+        'debug' => $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine()]);
 }
 
 } // end web-dispatch guard
