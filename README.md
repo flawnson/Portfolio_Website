@@ -295,6 +295,55 @@ Valid `platform` values are `x`, `bluesky`, `threads`. Leave `publish` as `false
 I wrote a small iOS app with SwiftUI to post to my website from anywhere.
 You can find it in the [Fwitter](https://github.com/flawnson/fwitter) repo on my GitHub.
 
+# Health
+A small integration that pulls my own health/fitness data (from my Fitbit) via the
+**Google Health API** — the cloud REST successor to the Fitbit Web API, using Google OAuth 2.0.
+The legacy Fitbit Web API turns down in September 2026 and the old Google Fit REST API at the
+end of 2026, so this builds against the current Google Health API (`https://health.googleapis.com/v4`).
+
+The metrics show on the homepage in the `#health-panel` section. The backend is intentionally
+generic so any data type can be fetched, not just the default bundle.
+
+## Endpoints (`api/`)
+- `health-common.php` — shared include (config, CORS, curl wrappers, token store, cache, normalization). Not a public endpoint.
+- `health-auth.php` — one-time OAuth flow. `?action=authorize&token=ADMIN_TOKEN` (admin-gated) → Google consent; `?action=callback` is the registered redirect URI that stores the refresh token.
+- `health-metrics.php` — public read endpoint:
+  - `?dataType=steps&startTime=...&endTime=...&pageSize=...` — any single data type over a window.
+  - no params → normalized bundle across a curated default set for the last 7 days (`?days=N`).
+  - `?resource=identity|profile|pairedDevices` — account/device metadata.
+  - Returns `{ ok, metrics:[{dataType,start,end,value,unit,source,raw}], meta }`, or HTTP 409 `needs_reauth` when the token expired/was revoked.
+
+The refresh + cached access token live in `/home/flawhvna/private/google-health-token.json`
+(written by the callback; the private dir must be writable by PHP). Responses are cached for
+5 minutes under `/home/flawhvna/private/cache/` so public traffic doesn't hit rate limits.
+
+## Config
+Add to `/home/flawhvna/private/microblog-config.php` (never in VCS):
+```php
+$googleHealthClientId     = '...';   // Google Cloud OAuth 2.0 client (Web application type)
+$googleHealthClientSecret = '...';
+$googleHealthRedirectUri  = 'https://flawnson.com/api/health-auth.php?action=callback';
+// Space-delimited read-only scopes. All Google Health scopes are "Restricted" — add the same
+// strings on the OAuth consent screen via "Manually add scopes". Drop ecg/irn/location if you
+// don't want heart-rhythm/GPS data exposed on the public panel.
+$googleHealthScopes       = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly https://www.googleapis.com/auth/googlehealth.sleep.readonly https://www.googleapis.com/auth/googlehealth.nutrition.readonly https://www.googleapis.com/auth/googlehealth.location.readonly https://www.googleapis.com/auth/googlehealth.ecg.readonly https://www.googleapis.com/auth/googlehealth.irn.readonly https://www.googleapis.com/auth/googlehealth.profile.readonly https://www.googleapis.com/auth/googlehealth.settings.readonly';
+$googleHealthUserId       = 'me';
+// reuses the existing $adminToken to gate the authorize step
+```
+
+## Setup
+1. Create a Google Cloud project at https://console.cloud.google.com (signed in as the account my Fitbit is on).
+2. Enable the **Health API** (`health.googleapis.com`). If an access-request/allowlist form appears, submit it.
+3. OAuth consent screen → User type **External**, add myself as a **Test user**, add the health read scopes. Keep publishing status **Testing** for personal use (refresh token then expires ~every 7 days; re-run authorize when the panel reports `needs_reauth`).
+4. Credentials → **Create OAuth client ID** → type **Web application**. Authorized redirect URI: `https://flawnson.com/api/health-auth.php?action=callback`. Copy the client ID/secret into the config.
+5. Make sure the Fitbit is linked to the same Google account and has synced recently (no synced data → empty responses, not an error).
+6. After deploy, visit `https://flawnson.com/api/health-auth.php?action=authorize&token=ADMIN_TOKEN` once and approve consent. The callback stores the refresh token.
+
+### References
+- Google Health API: https://developers.google.com/health
+- Google Health API REST reference: https://developers.google.com/health/reference/rest
+- Google OAuth 2.0 (web server): https://developers.google.com/identity/protocols/oauth2/web-server
+
 # Blog
 This is a simple python-rendered markdown blog.
 

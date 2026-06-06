@@ -168,6 +168,71 @@ function getLastCommitUrl() {
     return `${getApiBaseUrl()}/api/github-last-commit.php`;
 }
 
+function getHealthMetricsUrl() {
+    return `${getApiBaseUrl()}/api/health-metrics.php`;
+}
+
+function formatHealthLabel(dataType) {
+    return String(dataType)
+        .replace(/[_\-.]+/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Minimal renderer: groups normalized points by dataType and shows the latest
+// value per type. Intentionally simple — the backend is the flexible part.
+function renderHealthPanel(metrics) {
+    const root = document.getElementById("health-panel");
+    if (!root) return;
+
+    if (!Array.isArray(metrics) || !metrics.length) {
+        root.innerHTML = "<p>No health data synced yet.</p>";
+        return;
+    }
+
+    const latestByType = new Map();
+    for (const m of metrics) {
+        if (!m || m.value == null) continue;
+        const key = m.dataType;
+        const ts = new Date(m.end || m.start || 0).getTime();
+        const prev = latestByType.get(key);
+        if (!prev || ts >= prev.ts) {
+            latestByType.set(key, { ...m, ts });
+        }
+    }
+
+    if (!latestByType.size) {
+        root.innerHTML = "<p>No health data synced yet.</p>";
+        return;
+    }
+
+    const rows = [...latestByType.values()].map((m) => {
+        const label = escapeHtml(formatHealthLabel(m.dataType));
+        const value = escapeHtml(String(m.value));
+        const unit = m.unit ? ` ${escapeHtml(String(m.unit))}` : "";
+        const when = m.end || m.start ? formatRelativeTime(m.end || m.start) : "";
+        return `
+            <li style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0.35rem 0;border-bottom:1px solid #eee;">
+                <span>${label}</span>
+                <span><strong>${value}</strong>${unit}${when ? ` <small style="opacity:0.6;">${escapeHtml(when)}</small>` : ""}</span>
+            </li>`;
+    }).join("");
+
+    root.innerHTML = `<ul style="list-style:none;padding-left:0;margin:0;">${rows}</ul>`;
+}
+
+async function loadHealthMetrics() {
+    const root = document.getElementById("health-panel");
+    if (!root) return;
+
+    try {
+        const data = await fetchJsonWithTimeout(getHealthMetricsUrl(), 6000);
+        renderHealthPanel(data.metrics || []);
+    } catch (err) {
+        console.error(err);
+        root.innerHTML = "<p>Could not load health data right now.</p>";
+    }
+}
+
 async function fetchJsonWithTimeout(url, timeoutMs) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -270,7 +335,9 @@ async function loadLastCommitTimer() {
 
 loadMicroPosts();
 loadLastCommitTimer();
+loadHealthMetrics();
 setInterval(refreshMicroPosts, 15000);
+setInterval(loadHealthMetrics, 600000); // refresh health every 10 minutes
 
 const microPostsRoot = document.getElementById("micro-posts");
 if (microPostsRoot) {
