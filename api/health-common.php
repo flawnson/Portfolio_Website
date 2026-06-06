@@ -488,18 +488,26 @@ function health_extract_value(array $point): array {
 }
 
 /**
- * Formats a Google Health CivilDateTime ({year,month,day,hours?,...}) as a
- * readable ISO-like string. Returns null if not enough fields are present.
+ * Formats a Google Health CivilDateTime as a readable ISO-like string.
+ * CivilDateTime nests fields: { date: {year,month,day}, time: {hours,minutes,seconds} }.
+ * Falls back to a flat {year,month,day} shape just in case. Returns null if the
+ * date is missing.
  */
 function health_civil_to_string(?array $civil): ?string {
-    if (!is_array($civil) || !isset($civil['year'], $civil['month'], $civil['day'])) {
+    if (!is_array($civil)) {
         return null;
     }
-    $date = sprintf('%04d-%02d-%02d', (int) $civil['year'], (int) $civil['month'], (int) $civil['day']);
-    if (isset($civil['hours']) || isset($civil['minutes'])) {
-        $date .= sprintf('T%02d:%02d:%02d', (int) ($civil['hours'] ?? 0), (int) ($civil['minutes'] ?? 0), (int) ($civil['seconds'] ?? 0));
+    $date = isset($civil['date']) && is_array($civil['date']) ? $civil['date'] : $civil;
+    if (!isset($date['year'], $date['month'], $date['day'])) {
+        return null;
     }
-    return $date;
+    $out = sprintf('%04d-%02d-%02d', (int) $date['year'], (int) $date['month'], (int) $date['day']);
+
+    $time = isset($civil['time']) && is_array($civil['time']) ? $civil['time'] : null;
+    if (is_array($time) && (isset($time['hours']) || isset($time['minutes']))) {
+        $out .= sprintf('T%02d:%02d:%02d', (int) ($time['hours'] ?? 0), (int) ($time['minutes'] ?? 0), (int) ($time['seconds'] ?? 0));
+    }
+    return $out;
 }
 
 /**

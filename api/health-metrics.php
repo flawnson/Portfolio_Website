@@ -113,11 +113,14 @@ function health_civil_range(): array {
         $startTs = $endTs - (($days + 1) * 86400);
     }
 
+    // CivilDateTime nests the date under a "date" object: { date: {year,month,day} }.
     $toCivil = function (int $ts): array {
         return [
-            'year'  => (int) gmdate('Y', $ts),
-            'month' => (int) gmdate('n', $ts),
-            'day'   => (int) gmdate('j', $ts),
+            'date' => [
+                'year'  => (int) gmdate('Y', $ts),
+                'month' => (int) gmdate('n', $ts),
+                'day'   => (int) gmdate('j', $ts),
+            ],
         ];
     };
 
