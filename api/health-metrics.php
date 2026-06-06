@@ -73,6 +73,15 @@ try {
         ]);
     }
 
+    if (($_GET['debug'] ?? '') === 'probe') {
+        $dbgType = health_clean_data_type((string) ($_GET['dataType'] ?? 'steps'));
+        $tok = health_get_access_token();
+        if (!$tok['ok']) {
+            health_respond(409, ['ok' => false, 'error' => $tok['error']]);
+        }
+        health_respond(200, health_debug_probe($tok['access_token'], $dbgType));
+    }
+
     if ($resource !== '') {
         health_handle_resource($resource, $cacheTtl);
     } elseif ($dataType !== '') {
@@ -202,6 +211,59 @@ function health_fetch_data_type_raw(string $accessToken, string $clean, int $pag
     }
 
     return ['ok' => true, 'json' => $res['json'], 'status' => 200, 'error' => ''];
+}
+
+/**
+ * TEMPORARY diagnostics: gathers everything needed to finalize querying for one
+ * data type — a real sample point, how pagination behaves, and what the rollup
+ * method actually objects to. Removed once the integration is finalized.
+ */
+function health_debug_probe(string $accessToken, string $clean): array {
+    $userId  = rawurlencode(health_user_id());
+    $headers = health_bearer_headers($accessToken);
+    $base    = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints";
+    $out     = ['dataType' => $clean];
+
+    // (1) First list page, with its top-level keys.
+    $r1 = health_http_get($base . '?' . http_build_query(['pageSize' => 5]), $headers);
+    $out['list_page1'] = [
+        'status' => $r1['status'],
+        'keys'   => is_array($r1['json']) ? array_keys($r1['json']) : null,
+        'json'   => $r1['json'],
+    ];
+
+    // (2) Page forward until the first non-empty page (cap 25), capture a sample.
+    $token  = (string) ($r1['json']['nextPageToken'] ?? '');
+    $points = $r1['json']['dataPoints'] ?? [];
+    $pages  = 1;
+    while (empty($points) && $token !== '' && $pages < 25) {
+        $r = health_http_get($base . '?' . http_build_query(['pageSize' => 5, 'pageToken' => $token]), $headers);
+        if (!$r['ok']) {
+            break;
+        }
+        $points = $r['json']['dataPoints'] ?? [];
+        $token  = (string) ($r['json']['nextPageToken'] ?? '');
+        $pages++;
+    }
+    $out['list_scan'] = [
+        'pages_scanned' => $pages,
+        'found'         => is_array($points) ? count($points) : 0,
+        'sample'        => is_array($points) ? array_slice($points, 0, 2) : null,
+    ];
+
+    // (3) Minimal dailyRollUp (range only) for the last week — to see if the
+    // optional windowSizeDays/pageSize args were the "Invalid argument".
+    $end   = strtotime(gmdate('Y-m-d') . ' UTC') + 86400;
+    $start = $end - (8 * 86400);
+    $civil = function (int $ts): array {
+        return ['date' => ['year' => (int) gmdate('Y', $ts), 'month' => (int) gmdate('n', $ts), 'day' => (int) gmdate('j', $ts)]];
+    };
+    $rb = health_http_post_json($base . ':dailyRollUp', $headers, [
+        'range' => ['start' => $civil($start), 'end' => $civil($end)],
+    ]);
+    $out['rollup_minimal'] = ['status' => $rb['status'], 'json' => $rb['json']];
+
+    return $out;
 }
 
 /**
