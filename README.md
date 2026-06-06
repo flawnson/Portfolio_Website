@@ -311,11 +311,27 @@ generic so any data type can be fetched, not just the default bundle.
   - `?dataType=steps&days=7` (or `&start=YYYY-MM-DD&end=YYYY-MM-DD`) — any single data type. Valid ids: `steps`, `distance`, `active-energy-burned`, `active-zone-minutes`, `heart-rate`, `daily-resting-heart-rate`, `sleep`, etc.
   - no params → normalized bundle across a curated default set for the last 7 days (`?days=N`).
   - `?resource=identity|profile|pairedDevices` — account/device metadata.
-  - Returns `{ ok, metrics:[{dataType,metric,start,end,value,unit,source,raw}], meta }`, or HTTP 409 `needs_reauth` when the token expired/was revoked.
+  - Returns `{ ok, metrics:[{dataType,metric,start,end,value,unit,source,raw}], meta }`. On expired/revoked auth it serves the **last good snapshot** with `meta.stale=true` and `meta.as_of` (HTTP 200) so the public panel never goes blank; only if there's no snapshot yet does it return HTTP 409 `needs_reauth`.
+- `health-reauth-check.php` — cron watchdog (CLI). Detects an expired/revoked token and emails a one-tap authorize link; de-dupes via a flag file so you get one email per outage. Web access requires `?token=<adminToken>`.
 
-The refresh + cached access token live in `/home/flawhvna/private/google-health-token.json`
-(written by the callback; the private dir must be writable by PHP). Responses are cached for
-5 minutes under `/home/flawhvna/private/cache/` so public traffic doesn't hit rate limits.
+State files (all under the writable private dir):
+- `/home/flawhvna/private/google-health-token.json` — refresh + cached access token (written by the callback).
+- `/home/flawhvna/private/cache/` — 5-minute response cache so public traffic doesn't hit rate limits.
+- `/home/flawhvna/private/snapshots/` — last successful fetch per request shape (keeps the panel populated across token lapses).
+- `/home/flawhvna/private/health-reauth-alert.flag` + `health-reauth-check.log` — watchdog dedupe flag and log.
+
+### Re-auth watchdog cron
+Because the OAuth app stays in Testing mode (restricted Google Health scopes; production
+needs verification + an annual CASA assessment), the refresh token expires ~every 7 days and
+re-consent is interactive — it can't be fully automated. The watchdog makes it a one-tap job.
+Add a cPanel cron job (Cron Jobs → add new), daily is recommended:
+```
+0 8 * * * /usr/local/bin/php /home/flawhvna/public_html/api/health-reauth-check.php >/dev/null 2>&1
+```
+Use the PHP CLI path cPanel shows for your account (e.g. `/opt/cpanel/ea-php81/root/usr/bin/php`).
+Set `$googleHealthAlertEmail` in the config (defaults to flawnsontong1@gmail.com). If `mail()`
+delivery is unreliable, instead drop the `>/dev/null 2>&1` and set the cron's notification
+email — the script prints to stdout only when action is needed.
 
 ## Config
 Add to `/home/flawhvna/private/microblog-config.php` (never in VCS):
@@ -328,6 +344,7 @@ $googleHealthRedirectUri  = 'https://flawnson.com/api/health-auth.php?action=cal
 // don't want heart-rhythm/GPS data exposed on the public panel.
 $googleHealthScopes       = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly https://www.googleapis.com/auth/googlehealth.sleep.readonly https://www.googleapis.com/auth/googlehealth.nutrition.readonly https://www.googleapis.com/auth/googlehealth.location.readonly https://www.googleapis.com/auth/googlehealth.ecg.readonly https://www.googleapis.com/auth/googlehealth.irn.readonly https://www.googleapis.com/auth/googlehealth.profile.readonly https://www.googleapis.com/auth/googlehealth.settings.readonly';
 $googleHealthUserId       = 'me';
+$googleHealthAlertEmail   = 'flawnsontong1@gmail.com';   // where the re-auth watchdog emails the reconnect link
 // reuses the existing $adminToken to gate the authorize step
 ```
 

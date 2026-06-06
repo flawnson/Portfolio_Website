@@ -28,6 +28,7 @@ const HEALTH_PRIVATE_DIR   = '/home/flawhvna/private';
 const HEALTH_CONFIG_PATH   = '/home/flawhvna/private/microblog-config.php';
 const HEALTH_TOKEN_PATH    = '/home/flawhvna/private/google-health-token.json';
 const HEALTH_CACHE_DIR     = '/home/flawhvna/private/cache';
+const HEALTH_SNAPSHOT_DIR  = '/home/flawhvna/private/snapshots';
 
 const GOOGLE_TOKEN_URL     = 'https://oauth2.googleapis.com/token';
 const GOOGLE_AUTH_URL      = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -369,6 +370,39 @@ function health_cache_put(string $key, array $data): void {
     }
     $path = HEALTH_CACHE_DIR . '/health-' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
     @file_put_contents($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+}
+
+// ---------------------------------------------------------------------------
+// Persistent snapshot store (no TTL) — keeps the LAST successful fetch so the
+// public panel can keep showing data even after the refresh token lapses.
+// Keyed by request *shape* (data types + window length), NOT absolute dates,
+// so the fallback is still found on later days.
+// ---------------------------------------------------------------------------
+
+function health_snapshot_path(string $key): string {
+    return HEALTH_SNAPSHOT_DIR . '/snap-' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+}
+
+/** Returns ['saved_at' => ISO8601, 'payload' => array] or null. */
+function health_snapshot_get(string $key): ?array {
+    $path = health_snapshot_path($key);
+    if (!is_readable($path)) {
+        return null;
+    }
+    $raw = file_get_contents($path);
+    $data = is_string($raw) ? json_decode($raw, true) : null;
+    return is_array($data) ? $data : null;
+}
+
+function health_snapshot_put(string $key, array $payload): void {
+    if (!is_dir(HEALTH_SNAPSHOT_DIR)) {
+        @mkdir(HEALTH_SNAPSHOT_DIR, 0700, true);
+    }
+    if (!is_dir(HEALTH_SNAPSHOT_DIR)) {
+        return;
+    }
+    $wrapper = ['saved_at' => gmdate('Y-m-d\TH:i:s\Z'), 'payload' => $payload];
+    @file_put_contents(health_snapshot_path($key), json_encode($wrapper, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
 // ---------------------------------------------------------------------------

@@ -17,3 +17,4 @@ deployment:
     - /bin/cp api/health-common.php $DEPLOYPATH/api/health-common.php
     - /bin/cp api/health-auth.php $DEPLOYPATH/api/health-auth.php
     - /bin/cp api/health-metrics.php $DEPLOYPATH/api/health-metrics.php
+    - /bin/cp api/health-reauth-check.php $DEPLOYPATH/api/health-reauth-check.php

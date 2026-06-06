@@ -170,6 +170,33 @@ function health_fetch_data_type(string $accessToken, string $dataType, array $st
     return ['ok' => true, 'metrics' => $metrics, 'status' => 200, 'error' => ''];
 }
 
+/**
+ * Last-resort response when a live fetch fails: serve the last successful
+ * snapshot (marked stale) so the public panel never goes blank. If there is no
+ * snapshot yet, fall back to the appropriate hard error.
+ */
+function health_serve_snapshot_or_error(string $snapshotKey, string $reason, int $errorStatus): void {
+    $snap = health_snapshot_get($snapshotKey);
+    if ($snap !== null && isset($snap['payload']) && is_array($snap['payload'])) {
+        $payload = $snap['payload'];
+        $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
+        $meta['stale']        = true;
+        $meta['stale_reason'] = $reason;
+        $meta['as_of']        = $snap['saved_at'] ?? null;
+        if ($reason === 'needs_reauth') {
+            $meta['reauth_hint'] = '/api/health-auth.php?action=authorize&token=<adminToken>';
+        }
+        $payload['meta'] = $meta;
+        health_respond(200, $payload);
+    }
+
+    if ($reason === 'needs_reauth') {
+        health_respond(409, ['ok' => false, 'error' => 'needs_reauth',
+            'reauth_hint' => '/api/health-auth.php?action=authorize&token=<adminToken>']);
+    }
+    health_respond($errorStatus, ['ok' => false, 'error' => $reason]);
+}
+
 function health_handle_single_type(string $dataType, int $cacheTtl): void {
     [$startCivil, $endCivil, $days] = health_civil_range();
 
@@ -178,43 +205,60 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
         health_respond(400, ['ok' => false, 'error' => 'invalid_data_type']);
     }
 
-    $cacheKey = "type_{$clean}_" . md5(json_encode([$startCivil, $endCivil]));
+    $cacheKey    = "type_{$clean}_" . md5(json_encode([$startCivil, $endCivil]));
+    $snapshotKey = "type_{$clean}_{$days}"; // date-independent, so fallback survives day changes
+
     $cached = health_cache_get($cacheKey, $cacheTtl);
     if ($cached !== null) {
         health_respond(200, $cached);
     }
 
-    $accessToken = health_token_or_fail();
-    $result = health_fetch_data_type($accessToken, $clean, $startCivil, $endCivil);
+    $tok = health_get_access_token();
+    if (!$tok['ok']) {
+        health_serve_snapshot_or_error($snapshotKey, $tok['error'], 502);
+    }
 
+    $result = health_fetch_data_type($tok['access_token'], $clean, $startCivil, $endCivil);
     if (!$result['ok']) {
         if ($result['error'] === 'needs_reauth') {
-            health_respond(409, ['ok' => false, 'error' => 'needs_reauth',
-                'reauth_hint' => '/api/health-auth.php?action=authorize&token=<adminToken>']);
+            health_serve_snapshot_or_error($snapshotKey, 'needs_reauth', 409);
         }
-        health_respond($result['status'] >= 400 ? $result['status'] : 502,
-            ['ok' => false, 'error' => $result['error'], 'dataType' => $clean]);
+        // Transient upstream error: prefer a stale snapshot over a hard failure.
+        health_serve_snapshot_or_error($snapshotKey, $result['error'], $result['status'] >= 400 ? $result['status'] : 502);
     }
 
     $payload = [
         'ok'      => true,
         'metrics' => $result['metrics'],
-        'meta'    => ['dataType' => $clean, 'range' => ['start' => $startCivil, 'end' => $endCivil], 'count' => count($result['metrics'])],
+        'meta'    => [
+            'dataType' => $clean,
+            'range'    => ['start' => $startCivil, 'end' => $endCivil],
+            'count'    => count($result['metrics']),
+            'stale'    => false,
+            'as_of'    => gmdate('Y-m-d\TH:i:s\Z'),
+        ],
     ];
     health_cache_put($cacheKey, $payload);
+    health_snapshot_put($snapshotKey, $payload);
     health_respond(200, $payload);
 }
 
 function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
     [$startCivil, $endCivil, $days] = health_civil_range();
 
-    $cacheKey = 'bundle_' . md5(json_encode([$startCivil, $endCivil, $dataTypes]));
+    $cacheKey    = 'bundle_' . md5(json_encode([$startCivil, $endCivil, $dataTypes]));
+    $snapshotKey = 'bundle_' . md5(json_encode([$days, $dataTypes])); // date-independent
+
     $cached = health_cache_get($cacheKey, $cacheTtl);
     if ($cached !== null) {
         health_respond(200, $cached);
     }
 
-    $accessToken = health_token_or_fail();
+    $tok = health_get_access_token();
+    if (!$tok['ok']) {
+        health_serve_snapshot_or_error($snapshotKey, $tok['error'], 502);
+    }
+    $accessToken = $tok['access_token'];
 
     $metrics = [];
     $errors  = [];
@@ -225,8 +269,8 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
                 $metrics[] = $m;
             }
         } elseif ($result['error'] === 'needs_reauth') {
-            health_respond(409, ['ok' => false, 'error' => 'needs_reauth',
-                'reauth_hint' => '/api/health-auth.php?action=authorize&token=<adminToken>']);
+            // Auth died mid-flight: serve the last good snapshot instead of erroring.
+            health_serve_snapshot_or_error($snapshotKey, 'needs_reauth', 409);
         } else {
             // A single unsupported/empty type shouldn't fail the whole bundle.
             $errors[$dt] = $result['error'];
@@ -241,10 +285,16 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
             'days'       => $days,
             'dataTypes'  => $dataTypes,
             'count'      => count($metrics),
+            'stale'      => false,
+            'as_of'      => gmdate('Y-m-d\TH:i:s\Z'),
             'partial_errors' => $errors ?: null,
         ],
     ];
     health_cache_put($cacheKey, $payload);
+    // Only snapshot a non-empty result, so one bad day doesn't overwrite good data.
+    if (!empty($metrics)) {
+        health_snapshot_put($snapshotKey, $payload);
+    }
     health_respond(200, $payload);
 }
 

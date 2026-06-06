@@ -180,7 +180,7 @@ function formatHealthLabel(dataType) {
 
 // Minimal renderer: groups normalized points by dataType and shows the latest
 // value per type. Intentionally simple — the backend is the flexible part.
-function renderHealthPanel(metrics) {
+function renderHealthPanel(metrics, meta) {
     const root = document.getElementById("health-panel");
     if (!root) return;
 
@@ -217,7 +217,18 @@ function renderHealthPanel(metrics) {
             </li>`;
     }).join("");
 
-    root.innerHTML = `<ul style="list-style:none;padding-left:0;margin:0;">${rows}</ul>`;
+    let footnote = "";
+    if (meta && meta.as_of) {
+        const asOf = formatRelativeTime(meta.as_of);
+        const stale = meta.stale
+            ? " · reconnecting…"
+            : "";
+        if (asOf) {
+            footnote = `<small style="opacity:0.6;display:block;margin-top:0.4rem;">as of ${escapeHtml(asOf)}${stale}</small>`;
+        }
+    }
+
+    root.innerHTML = `<ul style="list-style:none;padding-left:0;margin:0;">${rows}</ul>${footnote}`;
 }
 
 async function loadHealthMetrics() {
@@ -226,7 +237,7 @@ async function loadHealthMetrics() {
 
     try {
         const data = await fetchJsonWithTimeout(getHealthMetricsUrl(), 6000);
-        renderHealthPanel(data.metrics || []);
+        renderHealthPanel(data.metrics || [], data.meta || {});
     } catch (err) {
         console.error(err);
         root.innerHTML = "<p>Could not load health data right now.</p>";
