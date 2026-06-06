@@ -307,11 +307,11 @@ generic so any data type can be fetched, not just the default bundle.
 ## Endpoints (`api/`)
 - `health-common.php` — shared include (config, CORS, curl wrappers, token store, cache, normalization). Not a public endpoint.
 - `health-auth.php` — one-time OAuth flow. `?action=authorize&token=ADMIN_TOKEN` (admin-gated) → Google consent; `?action=callback` is the registered redirect URI that stores the refresh token.
-- `health-metrics.php` — public read endpoint:
-  - `?dataType=steps&startTime=...&endTime=...&pageSize=...` — any single data type over a window.
+- `health-metrics.php` — public read endpoint (uses the `:dailyRollUp` method for daily aggregates):
+  - `?dataType=steps&days=7` (or `&start=YYYY-MM-DD&end=YYYY-MM-DD`) — any single data type. Valid ids: `steps`, `distance`, `active-energy-burned`, `active-zone-minutes`, `heart-rate`, `daily-resting-heart-rate`, `sleep`, etc.
   - no params → normalized bundle across a curated default set for the last 7 days (`?days=N`).
   - `?resource=identity|profile|pairedDevices` — account/device metadata.
-  - Returns `{ ok, metrics:[{dataType,start,end,value,unit,source,raw}], meta }`, or HTTP 409 `needs_reauth` when the token expired/was revoked.
+  - Returns `{ ok, metrics:[{dataType,metric,start,end,value,unit,source,raw}], meta }`, or HTTP 409 `needs_reauth` when the token expired/was revoked.
 
 The refresh + cached access token live in `/home/flawhvna/private/google-health-token.json`
 (written by the callback; the private dir must be writable by PHP). Responses are cached for

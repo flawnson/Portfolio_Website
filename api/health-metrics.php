@@ -5,13 +5,16 @@ declare(strict_types=1);
  * Public read endpoint for Google Health API data.
  *
  * Generic data fetch (anything about you):
- *   GET /api/health-metrics.php?dataType=<id>&startTime=<RFC3339>&endTime=<RFC3339>&pageSize=<n>
- *       Lists normalized data points for a single data type over a time window.
+ *   GET /api/health-metrics.php?dataType=<id>&days=<n>
+ *   GET /api/health-metrics.php?dataType=<id>&start=YYYY-MM-DD&end=YYYY-MM-DD
+ *       Returns normalized daily-aggregated points (via :dailyRollUp) for a
+ *       single data type over the window. Valid <id>s are the Google Health
+ *       data type identifiers, e.g. steps, distance, heart-rate, sleep.
  *
  * Default bundle (no dataType):
  *   GET /api/health-metrics.php
  *       Returns a normalized bundle across a curated set of common data types
- *       for the last 7 days (configurable via ?days=N).
+ *       for the last 7 days (configurable via ?days=N or start/end).
  *
  * Metadata:
  *   GET /api/health-metrics.php?resource=identity|profile|pairedDevices
@@ -90,32 +93,58 @@ function health_clean_data_type(string $dataType): string {
     return preg_replace('/[^a-zA-Z0-9_.\-]/', '', $dataType) ?? '';
 }
 
-function health_default_window(): array {
+/**
+ * Builds a civil-date {start,end} range for the :dailyRollUp method.
+ * Honors ?start=YYYY-MM-DD&end=YYYY-MM-DD, else ?days=N (default 7).
+ * The range is closed-open, so end is exclusive (tomorrow by default).
+ */
+function health_civil_range(): array {
     $days = max(1, min((int) ($_GET['days'] ?? 7), 90));
-    $end   = gmdate('Y-m-d\TH:i:s\Z');
-    $start = gmdate('Y-m-d\TH:i:s\Z', time() - ($days * 86400));
-    return [$start, $end, $days];
+
+    $startStr = trim((string) ($_GET['start'] ?? ''));
+    $endStr   = trim((string) ($_GET['end'] ?? ''));
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $startStr) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endStr)) {
+        $startTs = strtotime($startStr . ' UTC');
+        $endTs   = strtotime($endStr . ' UTC');
+    } else {
+        // Default: last N days through tomorrow (exclusive end).
+        $endTs   = strtotime(gmdate('Y-m-d') . ' UTC') + 86400;
+        $startTs = $endTs - (($days + 1) * 86400);
+    }
+
+    $toCivil = function (int $ts): array {
+        return [
+            'year'  => (int) gmdate('Y', $ts),
+            'month' => (int) gmdate('n', $ts),
+            'day'   => (int) gmdate('j', $ts),
+        ];
+    };
+
+    return [$toCivil($startTs), $toCivil($endTs), $days];
 }
 
 /**
- * Lists data points for one data type over a window and returns normalized rows.
+ * Fetches daily-aggregated points for one data type via the :dailyRollUp method
+ * and returns normalized rows.
  * Returns ['ok'=>bool, 'metrics'=>array, 'status'=>int, 'error'=>string].
  */
-function health_fetch_data_type(string $accessToken, string $dataType, string $start, string $end, int $pageSize): array {
+function health_fetch_data_type(string $accessToken, string $dataType, array $startCivil, array $endCivil): array {
     $clean = health_clean_data_type($dataType);
     if ($clean === '') {
         return ['ok' => false, 'metrics' => [], 'status' => 400, 'error' => 'invalid_data_type'];
     }
 
     $userId = rawurlencode(health_user_id());
-    $url = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints?"
-        . http_build_query([
-            'startTime' => $start,
-            'endTime'   => $end,
-            'pageSize'  => $pageSize,
-        ]);
+    $url = HEALTH_API_BASE . "/users/{$userId}/dataTypes/{$clean}/dataPoints:dailyRollUp";
 
-    $res = health_http_get($url, health_bearer_headers($accessToken));
+    $payload = [
+        'range'          => ['start' => $startCivil, 'end' => $endCivil],
+        'windowSizeDays' => 1,
+        'pageSize'       => 1000,
+    ];
+
+    $res = health_http_post_json($url, health_bearer_headers($accessToken), $payload);
 
     if (!$res['ok']) {
         // 401/403 mid-flight usually means the token/scopes went bad.
@@ -126,7 +155,7 @@ function health_fetch_data_type(string $accessToken, string $dataType, string $s
         return ['ok' => false, 'metrics' => [], 'status' => $res['status'] ?: 502, 'error' => (string) $apiError];
     }
 
-    $points = $res['json']['dataPoints'] ?? ($res['json']['point'] ?? []);
+    $points = $res['json']['rollupDataPoints'] ?? [];
     if (!is_array($points)) {
         $points = [];
     }
@@ -134,7 +163,7 @@ function health_fetch_data_type(string $accessToken, string $dataType, string $s
     $metrics = [];
     foreach ($points as $p) {
         if (is_array($p)) {
-            $metrics[] = health_normalize_point($clean, $p);
+            $metrics[] = health_normalize_rollup_point($clean, $p);
         }
     }
 
@@ -142,24 +171,21 @@ function health_fetch_data_type(string $accessToken, string $dataType, string $s
 }
 
 function health_handle_single_type(string $dataType, int $cacheTtl): void {
-    [$defStart, $defEnd] = health_default_window();
-    $start = trim((string) ($_GET['startTime'] ?? $defStart));
-    $end   = trim((string) ($_GET['endTime'] ?? $defEnd));
-    $pageSize = max(1, min((int) ($_GET['pageSize'] ?? 100), 1000));
+    [$startCivil, $endCivil, $days] = health_civil_range();
 
     $clean = health_clean_data_type($dataType);
     if ($clean === '') {
         health_respond(400, ['ok' => false, 'error' => 'invalid_data_type']);
     }
 
-    $cacheKey = "type_{$clean}_{$start}_{$end}_{$pageSize}";
+    $cacheKey = "type_{$clean}_" . md5(json_encode([$startCivil, $endCivil]));
     $cached = health_cache_get($cacheKey, $cacheTtl);
     if ($cached !== null) {
         health_respond(200, $cached);
     }
 
     $accessToken = health_token_or_fail();
-    $result = health_fetch_data_type($accessToken, $clean, $start, $end, $pageSize);
+    $result = health_fetch_data_type($accessToken, $clean, $startCivil, $endCivil);
 
     if (!$result['ok']) {
         if ($result['error'] === 'needs_reauth') {
@@ -173,16 +199,16 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
     $payload = [
         'ok'      => true,
         'metrics' => $result['metrics'],
-        'meta'    => ['dataType' => $clean, 'startTime' => $start, 'endTime' => $end, 'count' => count($result['metrics'])],
+        'meta'    => ['dataType' => $clean, 'range' => ['start' => $startCivil, 'end' => $endCivil], 'count' => count($result['metrics'])],
     ];
     health_cache_put($cacheKey, $payload);
     health_respond(200, $payload);
 }
 
 function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
-    [$start, $end, $days] = health_default_window();
+    [$startCivil, $endCivil, $days] = health_civil_range();
 
-    $cacheKey = 'bundle_' . $days . '_' . md5(implode(',', $dataTypes));
+    $cacheKey = 'bundle_' . md5(json_encode([$startCivil, $endCivil, $dataTypes]));
     $cached = health_cache_get($cacheKey, $cacheTtl);
     if ($cached !== null) {
         health_respond(200, $cached);
@@ -193,7 +219,7 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
     $metrics = [];
     $errors  = [];
     foreach ($dataTypes as $dt) {
-        $result = health_fetch_data_type($accessToken, (string) $dt, $start, $end, 200);
+        $result = health_fetch_data_type($accessToken, (string) $dt, $startCivil, $endCivil);
         if ($result['ok']) {
             foreach ($result['metrics'] as $m) {
                 $metrics[] = $m;
@@ -211,8 +237,7 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
         'ok'      => true,
         'metrics' => $metrics,
         'meta'    => [
-            'startTime'  => $start,
-            'endTime'    => $end,
+            'range'      => ['start' => $startCivil, 'end' => $endCivil],
             'days'       => $days,
             'dataTypes'  => $dataTypes,
             'count'      => count($metrics),

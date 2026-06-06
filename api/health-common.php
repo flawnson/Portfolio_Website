@@ -452,3 +452,86 @@ function health_extract_value(array $point): array {
     // Nothing scalar found — return null value; caller still has 'raw'.
     return [null, $point['unit'] ?? null];
 }
+
+/**
+ * Formats a Google Health CivilDateTime ({year,month,day,hours?,...}) as a
+ * readable ISO-like string. Returns null if not enough fields are present.
+ */
+function health_civil_to_string(?array $civil): ?string {
+    if (!is_array($civil) || !isset($civil['year'], $civil['month'], $civil['day'])) {
+        return null;
+    }
+    $date = sprintf('%04d-%02d-%02d', (int) $civil['year'], (int) $civil['month'], (int) $civil['day']);
+    if (isset($civil['hours']) || isset($civil['minutes'])) {
+        $date .= sprintf('T%02d:%02d:%02d', (int) ($civil['hours'] ?? 0), (int) ($civil['minutes'] ?? 0), (int) ($civil['seconds'] ?? 0));
+    }
+    return $date;
+}
+
+/**
+ * Normalizes a DailyRollupDataPoint (from the :dailyRollUp method) into the same
+ * flat shape as health_normalize_point().
+ *
+ * Shape: { civilStartTime, civilEndTime, <metricKey>: { <field>_<agg>: number, ... } }
+ * The metric value is a "union" — exactly one metric key (steps/heartRate/...) is
+ * present per point. We surface the most useful aggregate (sum, else avg/last/max).
+ */
+function health_normalize_rollup_point(string $dataType, array $point): array {
+    $start = health_civil_to_string($point['civilStartTime'] ?? null);
+    $end   = health_civil_to_string($point['civilEndTime'] ?? null);
+
+    // The metric union: the first non-metadata object key holds the value bag.
+    $metaKeys = ['civilStartTime', 'civilEndTime', 'startTime', 'endTime', 'dataSource', 'dataSourceFamily'];
+    $value = null;
+    $unit  = null;
+    $metricKey = null;
+
+    foreach ($point as $key => $val) {
+        if (in_array($key, $metaKeys, true)) {
+            continue;
+        }
+        if (is_array($val)) {
+            $metricKey = $key;
+            [$value, $unit] = health_pick_rollup_value($val);
+            break;
+        }
+        if (is_int($val) || is_float($val) || is_string($val)) {
+            $metricKey = $key;
+            $value = $val;
+            break;
+        }
+    }
+
+    return [
+        'dataType' => $dataType,
+        'metric'   => $metricKey,
+        'start'    => $start,
+        'end'      => $end,
+        'value'    => $value,
+        'unit'     => $unit,
+        'source'   => $point['dataSource']['device']['model'] ?? null,
+        'raw'      => $point,
+    ];
+}
+
+/**
+ * Picks the most representative scalar from a RollupValue bag whose fields look
+ * like "{field}_{aggregation}" (e.g. count_sum, bpm_avg). Preference order:
+ * *_sum, *_avg, *_last, *_max, *_min, then the first scalar found.
+ */
+function health_pick_rollup_value(array $bag): array {
+    $unit = $bag['unit'] ?? null;
+    foreach (['_sum', '_avg', '_average', '_last', '_latest', '_max', '_min'] as $suffix) {
+        foreach ($bag as $k => $v) {
+            if (is_string($k) && substr($k, -strlen($suffix)) === $suffix && (is_int($v) || is_float($v))) {
+                return [$v, $unit];
+            }
+        }
+    }
+    foreach ($bag as $v) {
+        if (is_int($v) || is_float($v) || is_string($v)) {
+            return [$v, $unit];
+        }
+    }
+    return [null, $unit];
+}
