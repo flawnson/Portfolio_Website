@@ -175,7 +175,17 @@ input:checked + .slider:before {
 
 /* Health section (left sidebar) */
 .health-section h2 {
-    font-size: 1.25rem;
+    font-size: 1.55rem;
+}
+
+.health-subtitle {
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: grey;
+}
+
+.health-label {
+    margin-bottom: 6px;
 }
 
 .health-week {
@@ -183,12 +193,12 @@ input:checked + .slider:before {
     justify-content: space-between;
     align-items: center;
     gap: 6px;
-    margin: 10px 0 14px;
+    margin: 0 0 16px;
     font-size: 1.5rem;
 }
 
 .health-day-on {
-    color: #f46e00;
+    color: #2ca02c;
 }
 
 .health-day-off {
@@ -196,17 +206,50 @@ input:checked + .slider:before {
 }
 
 .health-sleep {
-    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.health-sleep i {
-    color: #f46e00;
-    margin-right: 4px;
+.health-sleep-icon {
+    margin-right: 7px;
 }
 
-.health-sleep-label,
+.health-sleep-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
 .health-loading {
     color: grey;
+}
+
+.health-rhr {
+    margin-top: 16px;
+}
+
+.spark-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin-top: 2px;
+    overflow: visible;
+}
+
+.spark-line {
+    stroke: #e0566b;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 3;
+    stroke-linecap: round;
+}
+
+.spark-svg circle {
+    fill: #e0566b;
+}
+
+.spark-num {
+    fill: currentColor;
+    font-size: 9px;
 }
 
 /* Dark mode */
@@ -214,8 +257,7 @@ body.dark-mode .health-day-off {
     color: #555;
 }
 
-body.dark-mode .health-day-label,
-body.dark-mode .health-sleep-label,
+body.dark-mode .health-subtitle,
 body.dark-mode .health-loading {
     color: #aaa;
 }

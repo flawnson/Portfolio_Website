@@ -117,5 +117,18 @@ check('469 -> 7:49', $hm(469), '7:49');
 check('60 -> 1:00', $hm(60), '1:00');
 check('5 -> 0:05', $hm(5), '0:05');
 
+echo "\n=== 10. Daily-summary (resting HR) date + value ===\n";
+$rhrPoint = [
+    'dataSource'           => ['platform' => 'FITBIT'],
+    'dailyRestingHeartRate' => [
+        'date'           => ['year' => 2026, 'month' => 6, 'day' => 6],
+        'beatsPerMinute' => '67',
+        'dailyRestingHeartRateMetadata' => ['calculationMethod' => 'WITH_SLEEP'],
+    ],
+];
+$nr = health_normalize_list_point('daily-resting-heart-rate', $rhrPoint);
+check('rhr date', $nr['date'], '2026-06-06');
+check('rhr value (beatsPerMinute -> int)', $nr['value'], 67);
+
 echo "\n" . ($fail === 0 ? "ALL PASSED ✅" : "{$fail} FAILED ❌") . "\n";
 exit($fail === 0 ? 0 : 1);

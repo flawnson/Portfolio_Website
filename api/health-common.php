@@ -634,6 +634,11 @@ function health_normalize_list_point(string $dataType, array $point): array {
             $start = $sample['physicalTime'] ?? health_civil_to_string($sample['civilTime'] ?? null);
             $end   = $start;
             $civilDate = health_civil_to_string($sample['civilTime'] ?? null);
+        } elseif (isset($metricObj['date']) && is_array($metricObj['date'])) {
+            // Daily-summary types (e.g. daily-resting-heart-rate) carry a plain date.
+            $civilDate = health_civil_to_string($metricObj['date']);
+            $start = $civilDate;
+            $end   = $civilDate;
         }
         [$value, $unit] = health_pick_list_value($metricObj);
 

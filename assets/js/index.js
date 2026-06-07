@@ -187,6 +187,33 @@ function formatHoursMinutes(minutes) {
     return `${Math.floor(total / 60)}:${pad2(total % 60)}`;
 }
 
+// Tiny dotted-line sparkline (no axes) for a series of {date, value} points,
+// with the value printed below each dot.
+function buildSparkline(points) {
+    if (!points.length) return "";
+
+    const W = 240, H = 64, padX = 14, padTop = 12, padBottom = 20;
+    const chartH = H - padTop - padBottom;
+    const n = points.length;
+
+    const values = points.map((p) => p.value);
+    let vMin = Math.min(...values);
+    let vMax = Math.max(...values);
+    if (vMin === vMax) { vMin -= 1; vMax += 1; } // flat series -> centered line
+
+    const xAt = (i) => (n === 1 ? W / 2 : padX + (i * (W - 2 * padX)) / (n - 1));
+    const yAt = (v) => padTop + (1 - (v - vMin) / (vMax - vMin)) * chartH;
+
+    const line = points.map((p, i) => `${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ");
+    const dots = points.map((p, i) => `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(p.value).toFixed(1)}" r="2.6" />`).join("");
+    const nums = points.map((p, i) => `<text x="${xAt(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" class="spark-num">${escapeHtml(String(p.value))}</text>`).join("");
+
+    return `<svg class="spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Resting heart rate over the past week">
+        <polyline points="${line}" fill="none" class="spark-line" />
+        ${dots}${nums}
+    </svg>`;
+}
+
 // Renders the past 7 days (excluding today) as worked-out (step goal hit OR a
 // workout logged) vs rest circles, plus the most recent night's time asleep.
 function renderHealthPanel(metrics, meta) {
@@ -199,6 +226,7 @@ function renderHealthPanel(metrics, meta) {
 
     const stepsByDate = {};
     const exerciseDates = new Set();
+    const rhrByDate = {};
     let sleepMinutes = null;
     let sleepEndTs = -1;
 
@@ -209,6 +237,9 @@ function renderHealthPanel(metrics, meta) {
             if (Number.isFinite(v)) stepsByDate[m.date] = v;
         } else if (m.dataType === "exercise" && m.date) {
             exerciseDates.add(m.date);
+        } else if (m.dataType === "daily-resting-heart-rate" && m.date) {
+            const v = Number(m.value);
+            if (Number.isFinite(v)) rhrByDate[m.date] = v;
         } else if (m.dataType === "sleep") {
             const v = Number(m.value);
             const ts = new Date(m.end || m.start || 0).getTime();
@@ -238,12 +269,33 @@ function renderHealthPanel(metrics, meta) {
     }
 
     const sleepHtml = Number.isFinite(sleepMinutes)
-        ? `<div class="health-sleep"><i class="fas fa-bed" aria-hidden="true"></i> <strong>${formatHoursMinutes(sleepMinutes)}</strong> <span class="health-sleep-label">slept</span></div>`
-        : `<div class="health-sleep"><i class="fas fa-bed" aria-hidden="true"></i> <span class="health-sleep-label">no recent sleep data</span></div>`;
+        ? `<div class="health-sleep">
+               <span class="health-sleep-left"><span class="health-sleep-icon" aria-hidden="true">💤</span><span class="health-sleep-label">Time slept today</span></span>
+               <span class="health-sleep-value">${formatHoursMinutes(sleepMinutes)}</span>
+           </div>`
+        : `<div class="health-sleep">
+               <span class="health-sleep-left"><span class="health-sleep-icon" aria-hidden="true">💤</span><span class="health-sleep-label">No recent sleep data</span></span>
+           </div>`;
+
+    // Resting heart rate sparkline — last 7 days with data, oldest -> newest.
+    const rhrPoints = Object.keys(rhrByDate)
+        .sort()
+        .slice(-7)
+        .map((date) => ({ date, value: rhrByDate[date] }));
+    const rhrHtml = rhrPoints.length
+        ? `<div class="health-rhr">
+               <div class="health-label"><span class="health-sleep-icon" aria-hidden="true">❤️</span>Resting heart rate</div>
+               ${buildSparkline(rhrPoints)}
+           </div>`
+        : "";
 
     root.innerHTML = `
-        <div class="health-week" role="group" aria-label="Workouts over the past 7 days (excluding today)">${circles.join("")}</div>
-        ${sleepHtml}`;
+        <div class="health-workouts">
+            <div class="health-label"><span class="health-sleep-icon" aria-hidden="true">🏋️</span>Workouts the past 7 days</div>
+            <div class="health-week" role="group" aria-label="Workouts over the past 7 days (excluding today)">${circles.join("")}</div>
+        </div>
+        ${sleepHtml}
+        ${rhrHtml}`;
 }
 
 async function loadHealthMetrics() {
