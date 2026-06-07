@@ -70,9 +70,37 @@ $blueskyService = 'https://bsky.social';
 $threadsUserId = '...';
 $threadsAccessToken = '...';
 
+// Per-platform character limits for auto-threading (optional; these are the defaults)
+$xCharLimit = 280;          // raise to ~25000 if X Premium
+$blueskyCharLimit = 300;
+$threadsCharLimit = 500;
 ```
 
 Start with `$socialSyndicationEnabled = false`, deploy, confirm normal Fwitter posting still works, then turn it on after the platform credentials are configured.
+
+#### Auto-threading over-limit posts
+When the (mention-resolved) text exceeds a platform's character limit, the post is **split into
+chunks and published as a native thread** — a head post plus chained replies that read as natural
+follow-ups. Splitting is **strictly non-destructive**: it only splits, never rewords, summarizes,
+or adds `1/3`-style counters. Gemini chooses natural break points (sentence → clause → word); if
+Gemini is unavailable or returns altered text (verified by a whitespace-insensitive reconstruction
+check), a deterministic word-boundary splitter is used as a guaranteed fallback. Limits are
+per-platform (`$xCharLimit`/`$blueskyCharLimit`/`$threadsCharLimit`, counted with `mb_strlen`), so
+the same text may thread on X but fit in one Threads post. Threading applies to both top-level
+posts and replies. The Fwitter DB row and on-site feed keep the full original text as one post;
+only the external syndication is threaded. Images (X/Bluesky) attach to the head post only.
+
+The implementation lives in `micro-posts.php`: `split_text_for_limit` (+ `gemini_split_text`,
+`deterministic_split`, `split_is_faithful`) and the per-platform chainers `thread_to_x` /
+`thread_to_bluesky` / `thread_to_threads`, reusing the existing `reply_on_*` functions.
+
+Use the diagnostics endpoint to preview a split **without posting** (`publish:false` returns a
+`split` section per platform with the parts, lengths, and a `faithful` flag):
+```bash
+curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
+  -H "Content-Type: application/json" -H "X-Admin-Token: ADMIN_TOKEN" \
+  -d '{"body":"<a long post over 280 chars>","platform":"bluesky"}'
+```
 
 #### Gemini routing
 Gemini decides which platform receives the post. The PHP code calls the Gemini REST API with an explicit API key and expects exactly one platform token from `x`, `bluesky`, `threads`. If Gemini returns anything else, syndication is skipped for that post.

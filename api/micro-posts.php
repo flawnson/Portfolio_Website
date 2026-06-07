@@ -68,23 +68,27 @@ function config_int(string $name, int $default, int $min, int $max): int {
     return max($min, min($intValue, $max));
 }
 
-$configPath = '/home/flawhvna/private/microblog-config.php';
-if (!is_readable($configPath)) {
-    error_log("Fwitter config is not readable: {$configPath}");
-    respond(500, ['error' => 'config_unreadable']);
-}
+// Tests define MICRO_POSTS_TEST to load the functions below without the config
+// load or the web dispatch at the bottom of this file.
+if (!defined('MICRO_POSTS_TEST')) {
+    $configPath = '/home/flawhvna/private/microblog-config.php';
+    if (!is_readable($configPath)) {
+        error_log("Fwitter config is not readable: {$configPath}");
+        respond(500, ['error' => 'config_unreadable']);
+    }
 
-try {
-    include $configPath;
-} catch (Throwable $e) {
-    error_log("Fwitter config failed to load: " . $e->getMessage());
-    respond(500, ['error' => 'config_load_failed']);
-}
+    try {
+        include $configPath;
+    } catch (Throwable $e) {
+        error_log("Fwitter config failed to load: " . $e->getMessage());
+        respond(500, ['error' => 'config_load_failed']);
+    }
 
-foreach (['dbHost', 'dbName', 'dbUser', 'dbPass', 'adminToken'] as $requiredConfigName) {
-    if (config_string($requiredConfigName) === '') {
-        error_log("Fwitter config is missing required value: {$requiredConfigName}");
-        respond(500, ['error' => 'config_missing_required_value']);
+    foreach (['dbHost', 'dbName', 'dbUser', 'dbPass', 'adminToken'] as $requiredConfigName) {
+        if (config_string($requiredConfigName) === '') {
+            error_log("Fwitter config is missing required value: {$requiredConfigName}");
+            respond(500, ['error' => 'config_missing_required_value']);
+        }
     }
 }
 
@@ -1109,6 +1113,306 @@ function find_bluesky_root(int $startPostId, PDO $pdo): ?array {
     return null;
 }
 
+// ---------------------------------------------------------------------------
+// Threading: when text exceeds a platform's character limit, split it (strictly
+// — never reword) and post it as a native thread (head post + chained replies).
+// ---------------------------------------------------------------------------
+
+function platform_char_limit(string $platform): int {
+    switch ($platform) {
+        case 'x':       return config_int('xCharLimit', 280, 1, 100000);
+        case 'bluesky': return config_int('blueskyCharLimit', 300, 1, 100000);
+        case 'threads': return config_int('threadsCharLimit', 500, 1, 100000);
+        default:        return 280;
+    }
+}
+
+/**
+ * Splits $body into chunks each within $limit characters, preserving the EXACT
+ * original text. Prefers an LLM split (natural break points); falls back to a
+ * deterministic word-boundary split if the LLM is unavailable or alters text.
+ * A body already within the limit returns a single chunk.
+ */
+function split_text_for_limit(string $body, int $limit): array {
+    if ($limit < 1 || mb_strlen($body) <= $limit) {
+        return [$body];
+    }
+
+    $chunks = gemini_split_text($body, $limit);
+    if ($chunks !== null && split_is_faithful($body, $chunks, $limit)) {
+        return $chunks;
+    }
+
+    return deterministic_split($body, $limit);
+}
+
+/**
+ * Verifies a faithful split: every chunk non-empty and within the limit, and —
+ * ignoring whitespace — the chunks concatenate back to the original. That proves
+ * nothing was reworded/added/removed; only boundary whitespace changed.
+ */
+function split_is_faithful(string $original, array $chunks, int $limit): bool {
+    if (empty($chunks)) {
+        return false;
+    }
+    foreach ($chunks as $chunk) {
+        if (!is_string($chunk) || trim($chunk) === '' || mb_strlen($chunk) > $limit) {
+            return false;
+        }
+    }
+    $strip = static function (string $s): string {
+        return preg_replace('/\s+/u', '', $s);
+    };
+    return $strip(implode('', $chunks)) === $strip($original);
+}
+
+/** Splits a string into pieces of at most $size characters (multibyte-safe). */
+function mb_hard_split(string $s, int $size): array {
+    $out = [];
+    $len = mb_strlen($s);
+    for ($i = 0; $i < $len; $i += $size) {
+        $out[] = mb_substr($s, $i, $size);
+    }
+    return $out === [] ? [$s] : $out;
+}
+
+/**
+ * Greedy deterministic splitter on whitespace boundaries, preserving internal
+ * whitespace within a chunk and dropping it only where the break occurs. A
+ * single token longer than the limit is hard-split by characters. Always
+ * faithful and within the limit.
+ */
+function deterministic_split(string $body, int $limit): array {
+    $limit = max(1, $limit);
+    $tokens = preg_split('/(\s+)/u', $body, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+    if (!is_array($tokens) || $tokens === []) {
+        $tokens = [$body];
+    }
+
+    $chunks = [];
+    $current = '';
+    $flush = static function () use (&$chunks, &$current) {
+        $trimmed = trim($current);
+        if ($trimmed !== '') {
+            $chunks[] = $trimmed;
+        }
+        $current = '';
+    };
+
+    foreach ($tokens as $token) {
+        if (mb_strlen($token) > $limit) {
+            // A single word longer than the limit: flush, then hard-split it.
+            $flush();
+            $pieces = mb_hard_split($token, $limit);
+            $last = array_pop($pieces);
+            foreach ($pieces as $piece) {
+                $chunks[] = $piece;
+            }
+            $current = $last; // remainder continues into the next chunk
+            continue;
+        }
+
+        $candidate = $current . $token;
+        if (mb_strlen(trim($candidate)) > $limit) {
+            $flush();
+            $current = (trim($token) === '') ? '' : $token; // never start a chunk with whitespace
+        } else {
+            $current = $candidate;
+        }
+    }
+    $flush();
+
+    return empty($chunks) ? [$body] : $chunks;
+}
+
+/**
+ * Asks Gemini to split $body into a thread of chunks (<= $limit each), strictly
+ * preserving the original wording. Returns an array of strings, or null on any
+ * failure. Mirrors the Gemini call pattern in route_micro_post_result().
+ */
+function gemini_split_text(string $body, int $limit): ?array {
+    $apiKey = config_string('geminiApiKey');
+    if ($apiKey === '') {
+        return null;
+    }
+    $model = config_string('geminiModel', 'gemini-2.5-flash');
+
+    $prompt = "You split a social media post into a thread so each part fits a character limit. "
+        . "Return ONLY a JSON array of strings. Rules:\n"
+        . "1. Each string must be at most {$limit} characters.\n"
+        . "2. Concatenating the strings in order (joined with a single space at each split) must "
+        . "reproduce the EXACT original text. Do NOT reword, add, remove, summarize, fix spelling, "
+        . "translate, or add thread counters like '1/3'.\n"
+        . "3. Split only at natural boundaries — prefer sentence ends, then clauses, then word gaps "
+        . "— so each part reads as a natural continuation.\n"
+        . "4. Use the fewest parts possible.\n\n"
+        . "POST:\n{{POST}}";
+
+    $generationConfig = [
+        'temperature' => 0,
+        'maxOutputTokens' => 2048,
+        'responseMimeType' => 'application/json',
+        'responseSchema' => [
+            'type' => 'ARRAY',
+            'items' => ['type' => 'STRING'],
+        ],
+    ];
+    if (strpos($model, '2.5') !== false) {
+        $generationConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+    }
+
+    $response = http_json_request(
+        "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent",
+        ['x-goog-api-key: ' . $apiKey],
+        [
+            'contents' => [
+                ['parts' => [['text' => str_replace('{{POST}}', $body, $prompt)]]],
+            ],
+            'generationConfig' => $generationConfig,
+        ],
+        config_int('geminiTimeoutSeconds', 30, 1, 60)
+    );
+
+    if (!($response['ok'] ?? false)) {
+        return null;
+    }
+
+    $decoded = json_decode(gemini_response_raw_text($response), true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    $chunks = [];
+    foreach ($decoded as $item) {
+        if (!is_string($item)) {
+            return null;
+        }
+        if (trim($item) !== '') {
+            $chunks[] = $item;
+        }
+    }
+    return empty($chunks) ? null : $chunks;
+}
+
+/**
+ * Posts $chunks as a chained thread on X. $replyToTweetId !== null/'' makes the
+ * head a reply (used for over-limit Fwitter replies); otherwise the head is a
+ * fresh tweet. Image (if any) goes on the head only.
+ * Returns ['ok'=>head posted, 'result'=>head summary, 'post_id'=>head id|null,
+ *          'thread'=>['chunks'=>n,'posted'=>k]].
+ */
+function thread_to_x(array $chunks, ?string $replyToTweetId, ?array $imageData = null): array {
+    $head = ($replyToTweetId === null || $replyToTweetId === '')
+        ? publish_to_x($chunks[0], $imageData)
+        : reply_on_x($chunks[0], $replyToTweetId, $imageData);
+
+    $headId = extract_platform_post_id('x', $head);
+    if (!($head['ok'] ?? false) || $headId === null) {
+        return ['ok' => false, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => 0]];
+    }
+
+    $posted = 1;
+    $prevId = $headId['post_id'];
+    for ($i = 1, $n = count($chunks); $i < $n; $i++) {
+        $reply = reply_on_x($chunks[$i], $prevId, null);
+        $replyId = extract_platform_post_id('x', $reply);
+        if (!($reply['ok'] ?? false) || $replyId === null) {
+            error_log('Fwitter thread_to_x: chunk ' . $i . '/' . $n . ' failed: ' . json_encode(http_result_summary($reply), JSON_UNESCAPED_SLASHES));
+            break;
+        }
+        $prevId = $replyId['post_id'];
+        $posted++;
+    }
+
+    return ['ok' => true, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => $posted]];
+}
+
+/** Threads-platform thread chain (text-only). See thread_to_x. */
+function thread_to_threads(array $chunks, ?string $replyToId = null): array {
+    $head = ($replyToId === null || $replyToId === '')
+        ? publish_to_threads($chunks[0])
+        : reply_on_threads($chunks[0], $replyToId);
+
+    $headId = extract_platform_post_id('threads', $head);
+    if (!($head['ok'] ?? false) || $headId === null) {
+        return ['ok' => false, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => 0]];
+    }
+
+    $posted = 1;
+    $prevId = $headId['post_id'];
+    for ($i = 1, $n = count($chunks); $i < $n; $i++) {
+        $reply = reply_on_threads($chunks[$i], $prevId);
+        $replyId = extract_platform_post_id('threads', $reply);
+        if (!($reply['ok'] ?? false) || $replyId === null) {
+            error_log('Fwitter thread_to_threads: chunk ' . $i . '/' . $n . ' failed: ' . json_encode(http_result_summary($reply), JSON_UNESCAPED_SLASHES));
+            break;
+        }
+        $prevId = $replyId['post_id'];
+        $posted++;
+    }
+
+    return ['ok' => true, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => $posted]];
+}
+
+/**
+ * Bluesky thread chain. When $parentUri/$parentCid are set the head is a reply
+ * (root preserved); otherwise the head is a fresh post and becomes the thread
+ * root. Subsequent chunks reply to the previous chunk under that root.
+ */
+function thread_to_bluesky(array $chunks, ?string $parentUri, ?string $parentCid, ?string $rootUri, ?string $rootCid, ?array $imageData = null): array {
+    $isReply = ($parentUri !== null && $parentUri !== '' && $parentCid !== null && $parentCid !== '');
+
+    $head = $isReply
+        ? reply_on_bluesky($chunks[0], $parentUri, $parentCid, (string)$rootUri, (string)$rootCid, $imageData)
+        : publish_to_bluesky($chunks[0], $imageData);
+
+    $headId = extract_platform_post_id('bluesky', $head);
+    if (!($head['ok'] ?? false) || $headId === null) {
+        return ['ok' => false, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => 0]];
+    }
+
+    // Top-level post: the head is the thread root. Reply: keep the existing root.
+    $threadRootUri = $isReply ? (string)$rootUri : $headId['uri'];
+    $threadRootCid = $isReply ? (string)$rootCid : $headId['cid'];
+
+    $posted = 1;
+    $prevUri = $headId['uri'];
+    $prevCid = $headId['cid'];
+    for ($i = 1, $n = count($chunks); $i < $n; $i++) {
+        $reply = reply_on_bluesky($chunks[$i], $prevUri, $prevCid, $threadRootUri, $threadRootCid, null);
+        $replyId = extract_platform_post_id('bluesky', $reply);
+        if (!($reply['ok'] ?? false) || $replyId === null) {
+            error_log('Fwitter thread_to_bluesky: chunk ' . $i . '/' . $n . ' failed: ' . json_encode(http_result_summary($reply), JSON_UNESCAPED_SLASHES));
+            break;
+        }
+        $prevUri = $replyId['uri'];
+        $prevCid = $replyId['cid'];
+        $posted++;
+    }
+
+    return ['ok' => true, 'result' => http_result_summary($head), 'post_id' => $headId, 'thread' => ['chunks' => count($chunks), 'posted' => $posted]];
+}
+
+/**
+ * Top-level (non-reply) syndication for one platform: splits if needed, then
+ * posts as a single post or a thread. Drop-in replacement for the old
+ * publish_to_platform() call site, returning the richer thread-aware result.
+ */
+function thread_to_platform(string $platform, string $body, ?array $imageData = null): array {
+    $chunks = split_text_for_limit($body, platform_char_limit($platform));
+
+    if ($platform === 'x') {
+        return thread_to_x($chunks, null, $imageData);
+    }
+    if ($platform === 'bluesky') {
+        return thread_to_bluesky($chunks, null, null, null, null, $imageData);
+    }
+    if ($platform === 'threads') {
+        return thread_to_threads($chunks, null);
+    }
+    return ['ok' => false, 'result' => ['ok' => false, 'api_error' => 'invalid_platform'], 'post_id' => null, 'thread' => ['chunks' => 0, 'posted' => 0]];
+}
+
 function syndicate_micro_post(string $body, int $postId, ?array $imageData = null): array {
     if (!config_enabled('socialSyndicationEnabled')) {
         return [
@@ -1132,16 +1436,20 @@ function syndicate_micro_post(string $body, int $postId, ?array $imageData = nul
 
     foreach ($platforms as $platform) {
         $syndicationBody = resolve_mentions_for_syndication($body, $platform);
-        $result = publish_to_platform($platform, $syndicationBody, $imageData);
-        $summary = http_result_summary($result);
+        $threaded = thread_to_platform($platform, $syndicationBody, $imageData);
 
-        if ($result['ok'] ?? false) {
+        if ($threaded['ok']) {
             $anyOk = true;
         } else {
-            error_log("Fwitter syndication failed for post {$postId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
+            error_log("Fwitter syndication failed for post {$postId} to {$platform}: " . json_encode($threaded['result'], JSON_UNESCAPED_SLASHES));
         }
 
-        $results[$platform] = ['ok' => (bool)($result['ok'] ?? false), 'result' => $summary, 'post_id' => extract_platform_post_id($platform, $result)];
+        $results[$platform] = [
+            'ok' => $threaded['ok'],
+            'result' => $threaded['result'],
+            'post_id' => $threaded['post_id'],
+            'thread' => $threaded['thread'],
+        ];
     }
 
     return [
@@ -1225,6 +1533,10 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
     foreach ($platforms as $platform) {
         $syndicationBody = resolve_mentions_for_syndication($body, $platform);
 
+        // Over-limit replies thread too: the head chunk replies to the parent,
+        // remaining chunks chain off the previous chunk.
+        $chunks = split_text_for_limit($syndicationBody, platform_char_limit($platform));
+
         if ($platform === 'x') {
             $parentTweetId = (string)($rawIds['x']['post_id'] ?? '');
             if ($parentTweetId === '') {
@@ -1232,7 +1544,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to x skipped for post {$replyPostId}: no x.post_id in parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_x($syndicationBody, $parentTweetId, $imageData);
+            $threaded = thread_to_x($chunks, $parentTweetId, $imageData);
         } elseif ($platform === 'threads') {
             $parentThreadsId = (string)($rawIds['threads']['post_id'] ?? '');
             if ($parentThreadsId === '') {
@@ -1240,7 +1552,7 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to threads skipped for post {$replyPostId}: no threads.post_id in parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_threads($syndicationBody, $parentThreadsId);
+            $threaded = thread_to_threads($chunks, $parentThreadsId);
         } elseif ($platform === 'bluesky') {
             $parentUri = (string)($rawIds['bluesky']['uri'] ?? '');
             $parentCid = (string)($rawIds['bluesky']['cid'] ?? '');
@@ -1255,22 +1567,24 @@ function syndicate_reply(int $replyPostId, int $parentPostId, string $body, PDO 
                 error_log("Fwitter reply to bluesky skipped for post {$replyPostId}: could not resolve root from parent {$parentPostId}");
                 continue;
             }
-            $result = reply_on_bluesky($syndicationBody, $parentUri, $parentCid, $root['uri'], $root['cid'], $imageData);
+            $threaded = thread_to_bluesky($chunks, $parentUri, $parentCid, $root['uri'], $root['cid'], $imageData);
         } else {
             $results[$platform] = ['ok' => false, 'result' => ['api_error' => 'unsupported_platform'], 'post_id' => null];
             continue;
         }
 
-        $summary = http_result_summary($result);
-        $platformId = extract_platform_post_id($platform, $result);
-
-        if ($result['ok'] ?? false) {
+        if ($threaded['ok']) {
             $anyOk = true;
         } else {
-            error_log("Fwitter reply syndication failed for post {$replyPostId} to {$platform}: " . json_encode($summary, JSON_UNESCAPED_SLASHES));
+            error_log("Fwitter reply syndication failed for post {$replyPostId} to {$platform}: " . json_encode($threaded['result'], JSON_UNESCAPED_SLASHES));
         }
 
-        $results[$platform] = ['ok' => (bool)($result['ok'] ?? false), 'result' => $summary, 'post_id' => $platformId];
+        $results[$platform] = [
+            'ok' => $threaded['ok'],
+            'result' => $threaded['result'],
+            'post_id' => $threaded['post_id'],
+            'thread' => $threaded['thread'],
+        ];
     }
 
     return [
@@ -1391,6 +1705,23 @@ function handle_syndication_debug(): void {
         'resolved_per_platform' => empty($mentionResults) ? null : $mentionResults,
     ];
 
+    // Show how the (mention-resolved) text would split per platform — lets you
+    // test splitting safely with publish:false before anything is posted.
+    $debug['split'] = [];
+    foreach ($platforms as $plt) {
+        $pBody = $mentionResults[$plt] ?? $body;
+        $limit = platform_char_limit($plt);
+        $parts = split_text_for_limit($pBody, $limit);
+        $debug['split'][$plt] = [
+            'limit' => $limit,
+            'over_limit' => mb_strlen($pBody) > $limit,
+            'chunks' => count($parts),
+            'lengths' => array_map('mb_strlen', $parts),
+            'faithful' => split_is_faithful($pBody, $parts, $limit),
+            'parts' => $parts,
+        ];
+    }
+
     if (!$publish) {
         $debug['publish'] = ['skipped' => true, 'reason' => 'publish_false', 'platforms' => $platforms];
         respond(200, $debug);
@@ -1399,12 +1730,20 @@ function handle_syndication_debug(): void {
     $publishResults = [];
     foreach ($platforms as $plt) {
         $pBody = $mentionResults[$plt] ?? $body;
-        $publishResults[$plt] = http_result_summary(publish_to_platform($plt, $pBody), true);
+        $threaded = thread_to_platform($plt, $pBody, null);
+        $publishResults[$plt] = [
+            'ok' => $threaded['ok'],
+            'thread' => $threaded['thread'],
+            'post_id' => $threaded['post_id'],
+            'result' => $threaded['result'],
+        ];
     }
     $debug['publish'] = ['platforms' => $platforms, 'results' => $publishResults];
 
     respond(200, $debug);
 }
+
+if (!defined('MICRO_POSTS_TEST')) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_debug"])) {
     handle_syndication_debug();
@@ -1666,3 +2005,5 @@ if ($_SERVER["REQUEST_METHOD"] === "DELETE") {
 }
 
 respond(405, ["error" => "method_not_allowed"]);
+
+} // end web-dispatch guard
