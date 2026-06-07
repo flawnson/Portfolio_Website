@@ -214,6 +214,34 @@ function buildSparkline(points) {
     </svg>`;
 }
 
+// Tiny bar chart (no axes) for {date, value} points, value labelled below each
+// bar via fmt(). Bars scale from 0 to the week's max.
+function buildBars(points, fmt) {
+    if (!points.length) return "";
+
+    const W = 240, H = 64, padX = 8, padTop = 10, padBottom = 20;
+    const chartH = H - padTop - padBottom;
+    const n = points.length;
+    const vMax = Math.max(...points.map((p) => p.value)) || 1;
+
+    const slot = (W - 2 * padX) / n;
+    const barW = Math.min(slot * 0.62, 18);
+
+    const bars = points.map((p, i) => {
+        const cx = padX + slot * i + slot / 2;
+        const h = Math.max(2, (p.value / vMax) * chartH);
+        const y = padTop + (chartH - h);
+        return `<rect x="${(cx - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" class="bar-rect" />`;
+    }).join("");
+
+    const nums = points.map((p, i) => {
+        const cx = padX + slot * i + slot / 2;
+        return `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="spark-num">${escapeHtml(fmt(p.value))}</text>`;
+    }).join("");
+
+    return `<svg class="spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Time slept over the past week">${bars}${nums}</svg>`;
+}
+
 // Renders the past 7 days (excluding today) as worked-out (step goal hit OR a
 // workout logged) vs rest circles, plus the most recent night's time asleep.
 function renderHealthPanel(metrics, meta) {
@@ -227,8 +255,7 @@ function renderHealthPanel(metrics, meta) {
     const stepsByDate = {};
     const exerciseDates = new Set();
     const rhrByDate = {};
-    let sleepMinutes = null;
-    let sleepEndTs = -1;
+    const sleepByDate = {};
 
     for (const m of metrics) {
         if (!m) continue;
@@ -240,12 +267,11 @@ function renderHealthPanel(metrics, meta) {
         } else if (m.dataType === "daily-resting-heart-rate" && m.date) {
             const v = Number(m.value);
             if (Number.isFinite(v)) rhrByDate[m.date] = v;
-        } else if (m.dataType === "sleep") {
+        } else if (m.dataType === "sleep" && m.date) {
             const v = Number(m.value);
-            const ts = new Date(m.end || m.start || 0).getTime();
-            if (Number.isFinite(v) && v > 0 && Number.isFinite(ts) && ts >= sleepEndTs) {
-                sleepEndTs = ts;
-                sleepMinutes = v;
+            if (Number.isFinite(v) && v > 0) {
+                // Sum sessions on the same day (main sleep + naps).
+                sleepByDate[m.date] = (sleepByDate[m.date] || 0) + v;
             }
         }
     }
@@ -260,21 +286,30 @@ function renderHealthPanel(metrics, meta) {
         const workedOut =
             (stepsByDate[key] != null && stepsByDate[key] >= stepGoal) ||
             exerciseDates.has(key);
-        const iconClass = workedOut
-            ? "fas fa-check-circle health-day-on"
-            : "far fa-circle health-day-off";
         circles.push(
-            `<i class="${iconClass}" title="${key}: ${workedOut ? "worked out" : "rest"}" aria-label="${key}: ${workedOut ? "worked out" : "rest"}"></i>`
+            workedOut
+                ? `<span class="health-day-check" role="img" title="${key}: worked out" aria-label="${key}: worked out">✅</span>`
+                : `<span class="health-day-rest" role="img" title="${key}: rest" aria-label="${key}: rest">❌</span>`
         );
     }
 
-    const sleepHtml = Number.isFinite(sleepMinutes)
-        ? `<div class="health-sleep">
-               <span class="health-sleep-left"><span class="health-sleep-icon" aria-hidden="true">💤</span><span class="health-sleep-label">Time slept today</span></span>
-               <span class="health-sleep-value">${formatHoursMinutes(sleepMinutes)}</span>
+    const sleepPoints = Object.keys(sleepByDate)
+        .sort()
+        .slice(-7)
+        .map((date) => ({ date, value: sleepByDate[date] }));
+    const sleepAvg = sleepPoints.length
+        ? Math.round(sleepPoints.reduce((s, p) => s + p.value, 0) / sleepPoints.length)
+        : null;
+    const sleepHtml = sleepPoints.length
+        ? `<div class="health-sleep-section">
+               <div class="health-label health-head">
+                   <span><span class="health-sleep-icon" aria-hidden="true">💤</span>Time slept</span>
+                   <span class="health-avg">${formatHoursMinutes(sleepAvg)} avg</span>
+               </div>
+               ${buildBars(sleepPoints, formatHoursMinutes)}
            </div>`
-        : `<div class="health-sleep">
-               <span class="health-sleep-left"><span class="health-sleep-icon" aria-hidden="true">💤</span><span class="health-sleep-label">No recent sleep data</span></span>
+        : `<div class="health-sleep-section">
+               <div class="health-label"><span class="health-sleep-icon" aria-hidden="true">💤</span>No recent sleep data</div>
            </div>`;
 
     // Resting heart rate sparkline — last 7 days with data, oldest -> newest.
@@ -284,9 +319,9 @@ function renderHealthPanel(metrics, meta) {
         .map((date) => ({ date, value: rhrByDate[date] }));
     const rhrHtml = rhrPoints.length
         ? `<div class="health-rhr">
-               <div class="health-label health-rhr-head">
+               <div class="health-label health-head">
                    <span><span class="health-sleep-icon" aria-hidden="true">❤️</span>Resting heart rate</span>
-                   <span class="health-rhr-avg">${Math.round(rhrPoints.reduce((s, p) => s + p.value, 0) / rhrPoints.length)} avg</span>
+                   <span class="health-avg">${Math.round(rhrPoints.reduce((s, p) => s + p.value, 0) / rhrPoints.length)} avg</span>
                </div>
                ${buildSparkline(rhrPoints)}
            </div>`

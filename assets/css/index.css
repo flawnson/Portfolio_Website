@@ -174,10 +174,6 @@ input:checked + .slider:before {
 }
 
 /* Health section (left sidebar) */
-.health-section h2 {
-    font-size: 1.55rem;
-}
-
 .health-subtitle {
     font-size: 0.95rem;
     font-weight: 400;
@@ -190,9 +186,9 @@ input:checked + .slider:before {
 
 .health-week {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 14px;
     margin: 0 0 16px;
     font-size: 1.5rem;
 }
@@ -228,14 +224,15 @@ input:checked + .slider:before {
     margin-top: 16px;
 }
 
-.health-rhr-head {
+.health-head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
 }
 
-.health-rhr-avg {
-    font-size: 0.8rem;
+.health-avg {
+    font-size: 1.5rem;
+    font-weight: 700;
 }
 
 .spark-svg {
@@ -255,6 +252,10 @@ input:checked + .slider:before {
 
 .spark-svg circle {
     fill: #e0566b;
+}
+
+.bar-rect {
+    fill: #3b82f6;
 }
 
 .spark-num {
