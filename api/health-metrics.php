@@ -292,7 +292,7 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
         health_respond(400, ['ok' => false, 'error' => 'invalid_data_type']);
     }
 
-    $cacheKey    = "type_{$clean}_" . md5(json_encode([$startCivil, $endCivil]));
+    $cacheKey    = "type_{$clean}_" . md5(json_encode([HEALTH_BUILD, $startCivil, $endCivil]));
     $snapshotKey = "type_{$clean}_{$days}"; // date-independent, so fallback survives day changes
 
     $cached = health_cache_get($cacheKey, $cacheTtl);
@@ -333,7 +333,7 @@ function health_handle_single_type(string $dataType, int $cacheTtl): void {
 function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
     [$startCivil, $endCivil, $days] = health_civil_range();
 
-    $cacheKey    = 'bundle_' . md5(json_encode([$startCivil, $endCivil, $dataTypes]));
+    $cacheKey    = 'bundle_' . md5(json_encode([HEALTH_BUILD, $startCivil, $endCivil, $dataTypes]));
     $snapshotKey = 'bundle_' . md5(json_encode([$days, $dataTypes])); // date-independent
 
     $cached = health_cache_get($cacheKey, $cacheTtl);
@@ -372,7 +372,7 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
             'days'       => $days,
             'dataTypes'  => $dataTypes,
             'count'      => count($metrics),
-            'build'      => 'health-v2-workouts',
+            'build'      => HEALTH_BUILD,
             'step_goal'  => (int) health_config_string('googleHealthStepGoal', '10000'),
             'stale'      => false,
             'as_of'      => gmdate('Y-m-d\TH:i:s\Z'),
@@ -398,7 +398,7 @@ function health_handle_resource(string $resource, int $cacheTtl): void {
             'allowed' => array_keys($map)]);
     }
 
-    $cacheKey = 'res_' . $resource;
+    $cacheKey = 'res_' . HEALTH_BUILD . '_' . $resource;
     $cached = health_cache_get($cacheKey, $cacheTtl);
     if ($cached !== null) {
         health_respond(200, $cached);

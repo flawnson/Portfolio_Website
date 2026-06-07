@@ -228,6 +228,16 @@ input:checked + .slider:before {
     margin-top: 16px;
 }
 
+.health-rhr-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.health-rhr-avg {
+    font-size: 0.8rem;
+}
+
 .spark-svg {
     width: 100%;
     height: auto;

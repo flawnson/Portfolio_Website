@@ -284,7 +284,10 @@ function renderHealthPanel(metrics, meta) {
         .map((date) => ({ date, value: rhrByDate[date] }));
     const rhrHtml = rhrPoints.length
         ? `<div class="health-rhr">
-               <div class="health-label"><span class="health-sleep-icon" aria-hidden="true">❤️</span>Resting heart rate</div>
+               <div class="health-label health-rhr-head">
+                   <span><span class="health-sleep-icon" aria-hidden="true">❤️</span>Resting heart rate</span>
+                   <span class="health-rhr-avg">${Math.round(rhrPoints.reduce((s, p) => s + p.value, 0) / rhrPoints.length)} avg</span>
+               </div>
                ${buildSparkline(rhrPoints)}
            </div>`
         : "";

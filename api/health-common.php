@@ -37,6 +37,10 @@ const HEALTH_API_BASE      = 'https://health.googleapis.com/v4';
 // Refresh the access token this many seconds before it actually expires.
 const HEALTH_TOKEN_SKEW    = 120;
 
+// Bump on any change that affects response shape — it's mixed into the response
+// cache key, so a deploy auto-invalidates stale cached payloads.
+const HEALTH_BUILD         = 'health-v3-rhr';
+
 // ---------------------------------------------------------------------------
 // CORS + response helpers
 // ---------------------------------------------------------------------------
