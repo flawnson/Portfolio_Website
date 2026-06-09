@@ -1,0 +1,250 @@
+/* ==========================================================================
+   Command palette (⌘K / Ctrl+K)
+   Vanilla, framework-free. Matches the site's tokens: Karla, #f5f5f5/#ddd,
+   #2196F3 accent, 999px pills, subtle shadows, 0.2s ease. Dark mode mirrors
+   the site's `body.dark-mode` convention (black bg / white text).
+   ========================================================================== */
+
+:root {
+    --cmdk-bg: #ffffff;
+    --cmdk-fg: #111111;
+    --cmdk-muted: #6b6b6b;
+    --cmdk-border: #dddddd;
+    --cmdk-subtle: #f5f5f5;
+    --cmdk-accent: #2196F3;
+    --cmdk-active: #eef6ff;
+}
+
+body.dark-mode {
+    --cmdk-bg: #111111;
+    --cmdk-fg: #ffffff;
+    --cmdk-muted: rgba(255, 255, 255, 0.6);
+    --cmdk-border: rgba(255, 255, 255, 0.18);
+    --cmdk-subtle: rgba(255, 255, 255, 0.06);
+    --cmdk-accent: #2196F3;
+    --cmdk-active: rgba(33, 150, 243, 0.18);
+}
+
+/* ----- Trigger affordance ----- */
+.cmdk-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--cmdk-border);
+    border-radius: 999px;
+    background: var(--cmdk-subtle);
+    color: var(--cmdk-fg);
+    font-family: "Karla", "Roboto", sans-serif;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cmdk-trigger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cmdk-trigger .cmdk-kbd {
+    font-size: 1.1rem;
+    opacity: 0.7;
+    border: 1px solid var(--cmdk-border);
+    border-radius: 6px;
+    padding: 1px 6px;
+}
+
+/* Floating variant (pages without a nav list) */
+.cmdk-trigger--floating {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 9000;
+    background: var(--cmdk-bg);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* ----- Overlay ----- */
+.cmdk-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 12vh 16px 16px;
+    background: rgba(0, 0, 0, 0.38);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    font-family: "Karla", "Roboto", sans-serif;
+}
+
+.cmdk-overlay.cmdk-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ----- Panel ----- */
+.cmdk-panel {
+    width: 100%;
+    max-width: 620px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cmdk-bg);
+    color: var(--cmdk-fg);
+    border: 1px solid var(--cmdk-border);
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+    transform: translateY(-6px);
+    transition: transform 0.18s ease;
+}
+
+.cmdk-overlay.cmdk-open .cmdk-panel {
+    transform: translateY(0);
+}
+
+/* ----- Search input ----- */
+.cmdk-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--cmdk-border);
+}
+
+.cmdk-search-icon {
+    opacity: 0.5;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.cmdk-input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--cmdk-fg);
+    font-family: inherit;
+    font-size: 1.7rem;
+}
+
+.cmdk-input::placeholder {
+    color: var(--cmdk-muted);
+}
+
+.cmdk-esc {
+    font-size: 1.1rem;
+    color: var(--cmdk-muted);
+    border: 1px solid var(--cmdk-border);
+    border-radius: 6px;
+    padding: 2px 7px;
+}
+
+/* ----- Results list ----- */
+.cmdk-results {
+    overflow-y: auto;
+    padding: 6px 0 8px;
+}
+
+.cmdk-section-title {
+    padding: 10px 16px 4px;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cmdk-muted);
+}
+
+.cmdk-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 16px;
+    cursor: pointer;
+}
+
+.cmdk-item.cmdk-active {
+    background: var(--cmdk-active);
+}
+
+.cmdk-item-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.cmdk-item-title {
+    font-size: 1.45rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cmdk-item-summary {
+    font-size: 1.2rem;
+    color: var(--cmdk-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ----- Type badge (999px pill, per-type accent) ----- */
+.cmdk-badge {
+    flex: none;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--cmdk-subtle);
+    border: 1px solid var(--cmdk-border);
+    color: var(--cmdk-muted);
+    text-transform: lowercase;
+}
+
+/* A few accents so scanning is fast; everything else falls back to neutral. */
+.cmdk-badge--action  { color: #b26a00; border-color: rgba(178, 106, 0, 0.35); }
+.cmdk-badge--blog    { color: #2196F3; border-color: rgba(33, 150, 243, 0.35); }
+.cmdk-badge--fweet   { color: #2ca02c; border-color: rgba(44, 160, 44, 0.35); }
+.cmdk-badge--project { color: #8250df; border-color: rgba(130, 80, 223, 0.35); }
+.cmdk-badge--company { color: #d4327a; border-color: rgba(212, 50, 122, 0.35); }
+.cmdk-badge--tea     { color: #2e7d32; border-color: rgba(46, 125, 50, 0.35); }
+.cmdk-badge--paper   { color: #5a5a5a; border-color: rgba(90, 90, 90, 0.35); }
+
+/* ----- Footer hint ----- */
+.cmdk-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--cmdk-border);
+    font-size: 1.1rem;
+    color: var(--cmdk-muted);
+}
+
+.cmdk-footer .cmdk-kbd {
+    border: 1px solid var(--cmdk-border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    margin: 0 2px;
+}
+
+.cmdk-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--cmdk-muted);
+    font-size: 1.35rem;
+}
+
+.cmdk-notice {
+    padding: 6px 16px;
+    font-size: 1.1rem;
+    color: var(--cmdk-muted);
+}
+
+@media (max-width: 600px) {
+    .cmdk-overlay { padding-top: 8vh; }
+    .cmdk-item-summary { display: none; }
+}

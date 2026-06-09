@@ -1,0 +1,219 @@
+[
+  {
+    "id": "card-resume",
+    "title": "Résumé",
+    "type": "resume",
+    "summary": "Flawnson Tong's résumé (PDF).",
+    "tags": ["resume", "cv", "experience"],
+    "url": "/assets/images/Flawnson_Resume%20v10.1.pdf",
+    "updatedAt": "2026-06-09",
+    "keywords": ["hire", "work history", "download"]
+  },
+
+  {
+    "id": "card-teatico",
+    "title": "Teatico",
+    "type": "project",
+    "summary": "Tea product encyclopedia with scraped/indexed tea products and contribution workflows.",
+    "tags": ["tea", "search", "scraping", "nextjs", "postgres", "encyclopedia"],
+    "url": "http://teatico.com/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["tea database", "tea products", "tisane"]
+  },
+  {
+    "id": "card-comend",
+    "title": "Comend",
+    "type": "project",
+    "summary": "Rare disease care platform — connecting and supporting high-trust patient communities.",
+    "tags": ["rare disease", "healthcare", "startup", "product", "comend"],
+    "url": "https://comend.io/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["comendcare", "patients", "rare disease resources"]
+  },
+
+  {
+    "id": "card-nome",
+    "title": "Nome Therapeutics",
+    "type": "company",
+    "summary": "Staff Engineer (Apr 2026 – present).",
+    "tags": ["work", "engineering", "biotech", "timeline"],
+    "url": "",
+    "updatedAt": "2026-04-01",
+    "keywords": ["job", "current role"]
+  },
+  {
+    "id": "card-comend-company",
+    "title": "Comend — Co-founder & CTO",
+    "type": "company",
+    "summary": "Co-founder & CTO (Feb 2023 – present). Built a rare disease care platform.",
+    "tags": ["work", "founder", "cto", "rare disease", "timeline"],
+    "url": "https://comend.io/",
+    "updatedAt": "2023-02-01",
+    "keywords": ["startup", "co-founder"]
+  },
+  {
+    "id": "card-ef",
+    "title": "Entrepreneur First",
+    "type": "company",
+    "summary": "Founder in Residence (Mar 2022 – Feb 2023).",
+    "tags": ["work", "founder", "ef", "timeline"],
+    "url": "",
+    "updatedAt": "2022-03-01",
+    "keywords": ["entrepreneur first", "fir"]
+  },
+  {
+    "id": "card-kebotix",
+    "title": "Kebotix",
+    "type": "company",
+    "summary": "Machine Learning Developer — self-driving labs for materials discovery.",
+    "tags": ["work", "machine learning", "timeline"],
+    "url": "https://www.kebotix.com/",
+    "updatedAt": "2021-01-01",
+    "keywords": ["ml developer", "materials"]
+  },
+
+  {
+    "id": "card-paper-sparseddd",
+    "title": "Sparse Dynamic Distribution Decomposition",
+    "type": "paper",
+    "summary": "Published research (arXiv). Code on GitHub at RelationRx/SparseDDD.",
+    "tags": ["research", "publication", "machine learning"],
+    "url": "https://arxiv.org/pdf/2006.05138.pdf",
+    "updatedAt": "2020-06-01",
+    "keywords": ["arxiv", "sparseddd", "paper", "publication"]
+  },
+
+  {
+    "id": "card-topic-rare-disease",
+    "title": "Rare disease",
+    "type": "topic",
+    "summary": "Work and writing on rare disease tooling — see Comend.",
+    "tags": ["rare disease", "healthcare", "comend"],
+    "url": "https://comend.io/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["patients", "rare", "disease"]
+  },
+  {
+    "id": "card-topic-tea",
+    "title": "Tea",
+    "type": "topic",
+    "summary": "Tea taxonomy, products, and the Teatico project.",
+    "tags": ["tea", "teatico"],
+    "url": "http://teatico.com/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["tisane", "tea taxonomy"]
+  },
+  {
+    "id": "card-topic-ai",
+    "title": "AI & agents",
+    "type": "topic",
+    "summary": "Writing and projects on AI, LLMs, and coding agents.",
+    "tags": ["ai", "agents", "llm"],
+    "url": "/blog/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["artificial intelligence", "llm", "agent"]
+  },
+
+  {
+    "id": "card-tool-typescript",
+    "title": "TypeScript",
+    "type": "tool",
+    "summary": "Primary language for full-stack product work.",
+    "tags": ["typescript", "stack", "language"],
+    "url": "",
+    "updatedAt": "2026-06-09",
+    "keywords": ["ts", "node"]
+  },
+  {
+    "id": "card-tool-python",
+    "title": "Python",
+    "type": "tool",
+    "summary": "Used for ML, data, scraping, and tooling.",
+    "tags": ["python", "stack", "ml", "scraping"],
+    "url": "",
+    "updatedAt": "2026-06-09",
+    "keywords": ["py", "machine learning"]
+  },
+  {
+    "id": "card-tool-php",
+    "title": "PHP",
+    "type": "tool",
+    "summary": "Powers this site's APIs (Fwitter, health, GitHub widgets).",
+    "tags": ["php", "stack", "backend"],
+    "url": "",
+    "updatedAt": "2026-06-09",
+    "keywords": ["api", "backend"]
+  },
+
+  {
+    "id": "card-profile-github",
+    "title": "GitHub — @flawnson",
+    "type": "profile",
+    "summary": "Open-source repos and experiments.",
+    "tags": ["github", "code", "profile"],
+    "url": "https://github.com/flawnson/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["repos", "source code"]
+  },
+  {
+    "id": "card-profile-medium",
+    "title": "Medium — @flawnsontong1",
+    "type": "profile",
+    "summary": "Long-form writing, incl. geometric deep learning series.",
+    "tags": ["medium", "writing", "profile"],
+    "url": "https://medium.com/@flawnsontong1",
+    "updatedAt": "2026-06-09",
+    "keywords": ["articles", "blog", "essays"]
+  },
+  {
+    "id": "card-profile-linkedin",
+    "title": "LinkedIn — Flawnson Tong",
+    "type": "profile",
+    "summary": "Professional profile and work history.",
+    "tags": ["linkedin", "profile"],
+    "url": "https://www.linkedin.com/in/flawnson/",
+    "updatedAt": "2026-06-09",
+    "keywords": ["network", "professional"]
+  },
+  {
+    "id": "card-profile-x",
+    "title": "X / Twitter — @flawnsonTong",
+    "type": "profile",
+    "summary": "Short-form posts.",
+    "tags": ["x", "twitter", "profile"],
+    "url": "https://twitter.com/flawnsonTong",
+    "updatedAt": "2026-06-09",
+    "keywords": ["tweets"]
+  },
+  {
+    "id": "card-profile-spotify",
+    "title": "Spotify — music & playlists",
+    "type": "music",
+    "summary": "Artist profile, playlists, and piano recordings.",
+    "tags": ["spotify", "music", "piano"],
+    "url": "https://open.spotify.com/artist/5T8tAOwdQrk0CZB6DkQkII",
+    "updatedAt": "2026-06-09",
+    "keywords": ["songs", "playlist", "piano"]
+  },
+  {
+    "id": "card-profile-youtube",
+    "title": "YouTube — piano",
+    "type": "music",
+    "summary": "Piano performances and recordings.",
+    "tags": ["youtube", "music", "piano"],
+    "url": "https://www.youtube.com/channel/UCvr4LPREh7HlJObRAoDmwTQ",
+    "updatedAt": "2026-06-09",
+    "keywords": ["videos", "piano"]
+  },
+
+  {
+    "id": "card-qa-setup",
+    "title": "What's your setup?",
+    "type": "q&a",
+    "summary": "Hardware, dev environment, and tools I build with.",
+    "tags": ["uses", "setup", "hardware", "tools"],
+    "url": "/#qa",
+    "updatedAt": "2026-06-09",
+    "keywords": ["uses page", "what do you build with", "dev style"]
+  }
+]

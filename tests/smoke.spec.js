@@ -52,6 +52,43 @@ test("fwitter feed renders posts when API responds", async ({ page }) => {
   await expect(page.locator(".fwitter-post-body").first()).toContainText("First mocked fweet");
 });
 
+test("command palette opens, searches, and closes", async ({ page }) => {
+  await mockMicroPostsApi(page);
+  await page.goto("/");
+
+  // The trigger affordance is injected into the primary nav.
+  const trigger = page.locator(".cmdk-trigger");
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+
+  await expect(page.locator(".cmdk-overlay.cmdk-open")).toBeVisible();
+
+  // A seeded query should surface at least one sectioned result.
+  await page.locator(".cmdk-input").fill("comend");
+  await expect(page.locator(".cmdk-item").first()).toBeVisible();
+  expect(await page.locator(".cmdk-item").count()).toBeGreaterThan(0);
+
+  // Escape closes it.
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cmdk-overlay.cmdk-open")).toHaveCount(0);
+});
+
+test("command palette degrades gracefully when a source fails", async ({ page }) => {
+  await mockMicroPostsApi(page);
+  // Kill the handmade-card source; the palette must still work.
+  await page.route("**/data/search-index.json", async (route) => {
+    await route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
+  });
+
+  await page.goto("/");
+  await page.locator(".cmdk-trigger").click();
+  await expect(page.locator(".cmdk-overlay.cmdk-open")).toBeVisible();
+
+  // Built-in actions are always available even with a dead source.
+  await page.locator(".cmdk-input").fill("resume");
+  await expect(page.locator(".cmdk-item").first()).toBeVisible();
+});
+
 test("fwitter shows fallback status when API fails", async ({ page }) => {
   await page.route("**/api/micro-posts.php**", async (route) => {
     await route.fulfill({
