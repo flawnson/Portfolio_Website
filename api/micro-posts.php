@@ -391,6 +391,7 @@ x
   * philosophy
   * experimental ideas
   * professional reputation
+  * sharp, analytical takes on culture, music, books, or creative work (e.g. a thesis about an album, an argument about a novel)
 * Tone:
 
   * sharp
@@ -405,32 +406,26 @@ x
   * technically informed
   * mission-driven
   * professionally valuable
+  * an intellectually framed take on art, culture, music, or books
 
 bluesky
 
 * Best for:
 
-  * creativity
-  * music (analog and digital)
-  * books
-  * artistic observations
-  * thoughtful reflection
-  * poetic or introspective writing
-  * weird or niche observations
-  * chill hobbies like fountain pens, journaling, piano, keyboards, etc.
+  * genuinely poetic or introspective writing
+  * emotionally nuanced personal reflection
+  * expressive writing where the prose itself is the point
 * Tone:
 
   * reflective
-  * curious
-  * artistic
-  * intellectual but soft
-* Route here if the post feels:
-
-  * exploratory
-  * contemplative
-  * culturally aware
+  * lyrical
+  * introspective
   * emotionally nuanced
-  * creatively expressive
+* Route here if the post is:
+
+  * primarily a piece of expressive or poetic writing
+  * deep personal reflection
+  * contemplative and emotionally nuanced rather than informational or casual
 
 threads
 
@@ -447,6 +442,7 @@ threads
   * approachable social content
   * light inspiration
   * active hobbies like motorcycles, sports, etc.
+  * casual creative and hobby interests shared in an everyday way (music you're enjoying, books you're reading, journaling, fountain pens, piano, keyboards)
 * Tone:
 
   * casual
@@ -461,17 +457,18 @@ threads
   * aesthetic
   * low-stakes
   * socially relatable
+  * like sharing a hobby or creative interest personally
 
 Guideline rules:
 
-* If a post is about startups, AI, technical systems, culturally experimental, or ambitious ideas -> prefer x
-* If a post is artistic, philosophical, or reflective -> prefer bluesky
-* If a post is about everyday life, food, fitness, pets, or casual relatable experiences -> prefer threads
+* If a post is about startups, AI, technical systems, culturally experimental, ambitious ideas, or an intellectual take on culture, music, or books -> prefer x
+* If a post is about everyday life, food, fitness, pets, or casual hobbies (including music, books, journaling, pens, or piano shared casually) -> prefer threads
+* If a post is primarily poetic, introspective, or emotionally expressive writing -> prefer bluesky
 Tie-breaking rules:
 
-* Serious/professional -> x
-* Thoughtful/artistic -> bluesky
-* Casual/social -> threads
+* Serious/professional/analytical -> x
+* Casual/social/hobby/lifestyle -> threads
+* Poetic/introspective/emotionally expressive -> bluesky
 
 Input post:
 {{POST}}
