@@ -181,6 +181,19 @@ function localDateKey(d) {
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+// Day an exercise belongs to, in the viewer's local timezone. FITBIT exercise
+// points carry only a UTC instant (no civil/local time), so the server's m.date
+// is in UTC — an evening workout in a negative UTC offset (e.g. logged at
+// 9pm = 01:00Z next day) lands on the wrong day. Re-bucket from the instant so
+// it matches the local today/yesterday axis below; fall back to m.date.
+function exerciseDateKey(m) {
+    if (m && m.start) {
+        const t = new Date(m.start);
+        if (!Number.isNaN(t.getTime())) return localDateKey(t);
+    }
+    return (m && m.date) || null;
+}
+
 // Minutes -> "h:mm" (e.g. 469 -> "7:49").
 function formatHoursMinutes(minutes) {
     const total = Math.max(0, Math.round(Number(minutes) || 0));
@@ -262,8 +275,9 @@ function renderHealthPanel(metrics, meta) {
         if (m.dataType === "steps" && m.date) {
             const v = Number(m.value);
             if (Number.isFinite(v)) stepsByDate[m.date] = v;
-        } else if (m.dataType === "exercise" && m.date) {
-            exerciseDates.add(m.date);
+        } else if (m.dataType === "exercise") {
+            const key = exerciseDateKey(m);
+            if (key) exerciseDates.add(key);
         } else if (m.dataType === "daily-resting-heart-rate" && m.date) {
             const v = Number(m.value);
             if (Number.isFinite(v)) rhrByDate[m.date] = v;
