@@ -77,7 +77,8 @@
     const EMAIL = "flawnson.tong@gmail.com";
     const GITHUB_URL = "https://github.com/flawnson/";
     const COMEND_URL = "https://comend.io/";
-    const TEATICO_URL = "http://teatico.com/";
+    const TEATICO_URL = "https://teatico.com/";
+    const TEATICO_API = "https://teatico.com";
     const CACHE_TTL_MS = 5 * 60 * 1000;
     const FUSE_CDN = "https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js";
 
@@ -154,6 +155,31 @@
                 tags: Array.isArray(post.syndicated_platforms) ? post.syndicated_platforms : [],
                 url: buildPlatformUrl(post) || "/fwitter/",
                 updatedAt: post.created_at || ""
+            };
+        });
+    }
+
+    /* Maps Teatico autocomplete hits → records. Teatico's /api/search/teas
+       returns lean docs in autocomplete mode (id, name, category, brandName,
+       companyName, originCountries, forms). */
+    function mapTeas(hits) {
+        if (!Array.isArray(hits)) return [];
+        return hits.map((h) => {
+            const d = (h && h.document) || {};
+            const origins = Array.isArray(d.originCountries) ? d.originCountries : [];
+            const forms = Array.isArray(d.forms) ? d.forms : [];
+            const summary = [
+                d.brandName || d.companyName,
+                d.category ? `${d.category} tea` : "",
+                origins.join(", ")
+            ].filter(Boolean).join(" · ");
+            return {
+                id: `tea-${d.id}`,
+                title: d.name || "Tea",
+                type: "tea",
+                summary,
+                tags: [d.category].concat(forms, origins).filter(Boolean),
+                url: `${TEATICO_API}/tea/${d.id}`
             };
         });
     }
@@ -302,11 +328,18 @@
             }
         },
 
-        // Third-party offsite data — scaffolded, disabled until APIs are wired.
-        // Teatico is first-party (Flawnson's own platform) and the canonical
-        // first source to enable: its load() will page the Teatico API and map
-        // tea products into records (type: "tea").
-        offsiteStub("teatico"),
+        // Third-party offsite data. Teatico is first-party (Flawnson's own
+        // platform) and live: it's a *remote* source queried per-keystroke
+        // (its catalog is far too large to bulk-load), CORS-scoped to this
+        // origin on the Teatico side. The rest stay scaffolded + disabled.
+        {
+            id: "teatico", category: "offsite", enabled: true, remote: true,
+            query: async (q) => {
+                const url = `${TEATICO_API}/api/search/teas?mode=autocomplete&perPage=6&isPublished=true&q=${encodeURIComponent(q)}`;
+                const data = await fetchJsonWithTimeout(url, 5000);
+                return mapTeas(data && data.hits);
+            }
+        },
         offsiteStub("github"),
         offsiteStub("medium"),
         offsiteStub("youtube"),
@@ -318,13 +351,16 @@
 
     const state = {
         records: [],
+        remoteRecords: [],  // results from live per-query sources (e.g. Teatico)
         loaded: false,
         loadingPromise: null,
         cacheAt: 0,
         anySourceFailed: false,
         query: "",
         results: [],   // flat, ordered list of visible records (for keyboard nav)
-        active: 0
+        active: 0,
+        remoteTimer: null,
+        remoteSeq: 0
     };
 
     async function loadAllRecords(force) {
@@ -333,7 +369,8 @@
         }
         if (state.loadingPromise) return state.loadingPromise;
 
-        const enabled = SOURCES.filter((s) => s.enabled);
+        // Bulk (load-once) sources only; remote sources are queried per-keystroke.
+        const enabled = SOURCES.filter((s) => s.enabled && !s.remote);
         state.loadingPromise = Promise.allSettled(enabled.map((s) => s.load()))
             .then((settled) => {
                 const records = [];
@@ -360,6 +397,39 @@
             .finally(() => { state.loadingPromise = null; });
 
         return state.loadingPromise;
+    }
+
+    /* ----- remote (live, per-query) sources ----- */
+
+    function scheduleRemote(q) {
+        clearTimeout(state.remoteTimer);
+        if (!q.trim()) {
+            state.remoteRecords = [];
+            return;
+        }
+        state.remoteTimer = setTimeout(() => runRemoteSources(q), 220);
+    }
+
+    async function runRemoteSources(q) {
+        const sources = SOURCES.filter((s) => s.enabled && s.remote);
+        if (!sources.length) return;
+        const seq = ++state.remoteSeq;
+        const settled = await Promise.allSettled(sources.map((s) => s.query(q)));
+        if (seq !== state.remoteSeq) return; // a newer keystroke superseded this
+
+        const records = [];
+        settled.forEach((res, i) => {
+            if (res.status === "fulfilled" && Array.isArray(res.value)) {
+                res.value.forEach((raw) => {
+                    const n = normalizeRecord(raw, sources[i]);
+                    if (n) records.push(n);
+                });
+            } else {
+                console.warn("[cmdk] remote source failed:", sources[i].id, res.reason);
+            }
+        });
+        state.remoteRecords = records;
+        if (els && els.overlay.classList.contains("cmdk-open")) renderResults();
     }
 
     /* ----- matcher (swappable) ----- */
@@ -456,6 +526,7 @@
         });
         els.input.addEventListener("input", () => {
             state.query = els.input.value;
+            scheduleRemote(state.query);
             renderResults();
         });
 
@@ -477,7 +548,11 @@
             return actions.concat(recent);
         }
         const matcher = state.matcher || createMatcher(state.records);
-        return matcher.search(q).slice(0, 50);
+        const local = matcher.search(q).slice(0, 50);
+        // Remote hits (e.g. Teatico) are already server-ranked for this query, so
+        // they bypass the local matcher and are appended; section-grouping slots
+        // them under their own type ("tea").
+        return local.concat(state.remoteRecords || []);
     }
 
     function groupBySection(records) {
@@ -603,6 +678,8 @@
         els.overlay.classList.add("cmdk-open");
         els.input.value = "";
         state.query = "";
+        state.remoteRecords = [];
+        clearTimeout(state.remoteTimer);
         document.body.style.overflow = "hidden";
 
         // Render immediately (actions are always present), then refresh once

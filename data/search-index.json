@@ -16,7 +16,7 @@
     "type": "project",
     "summary": "Tea product encyclopedia with scraped/indexed tea products and contribution workflows.",
     "tags": ["tea", "search", "scraping", "nextjs", "postgres", "encyclopedia"],
-    "url": "http://teatico.com/",
+    "url": "https://teatico.com/",
     "updatedAt": "2026-06-09",
     "keywords": ["tea database", "tea products", "tisane"]
   },
@@ -99,7 +99,7 @@
     "type": "topic",
     "summary": "Tea taxonomy, products, and the Teatico project.",
     "tags": ["tea", "teatico"],
-    "url": "http://teatico.com/",
+    "url": "https://teatico.com/",
     "updatedAt": "2026-06-09",
     "keywords": ["tisane", "tea taxonomy"]
   },

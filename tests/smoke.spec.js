@@ -14,6 +14,22 @@ async function mockMicroPostsApi(page, posts = [{ body: "hello world", created_a
   });
 }
 
+// Keeps palette tests hermetic — no live Teatico network. Pass hits to simulate
+// tea results, or null to simulate the source being down (graceful degradation).
+async function mockTeaticoSearch(page, hits = []) {
+  await page.route("**/api/search/teas**", async (route) => {
+    if (hits === null) {
+      await route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ mode: "autocomplete", found: hits.length, page: 1, facet_counts: [], hits })
+    });
+  });
+}
+
 test("home page loads with core navigation links", async ({ page }) => {
   await mockMicroPostsApi(page);
   await page.goto("/");
@@ -54,6 +70,7 @@ test("fwitter feed renders posts when API responds", async ({ page }) => {
 
 test("command palette opens, searches, and closes", async ({ page }) => {
   await mockMicroPostsApi(page);
+  await mockTeaticoSearch(page);
   await page.goto("/");
 
   // The trigger affordance is injected into the primary nav.
@@ -75,6 +92,7 @@ test("command palette opens, searches, and closes", async ({ page }) => {
 
 test("command palette degrades gracefully when a source fails", async ({ page }) => {
   await mockMicroPostsApi(page);
+  await mockTeaticoSearch(page, null); // Teatico down too
   // Kill the handmade-card source; the palette must still work.
   await page.route("**/data/search-index.json", async (route) => {
     await route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
@@ -87,6 +105,34 @@ test("command palette degrades gracefully when a source fails", async ({ page })
   // Built-in actions are always available even with a dead source.
   await page.locator(".cmdk-input").fill("resume");
   await expect(page.locator(".cmdk-item").first()).toBeVisible();
+});
+
+test("command palette surfaces live Teatico tea results", async ({ page }) => {
+  await mockMicroPostsApi(page);
+  await mockTeaticoSearch(page, [
+    {
+      id: "abc-123",
+      document: {
+        id: "abc-123",
+        name: "Ceremonial Matcha",
+        category: "matcha",
+        brandName: "Ippodo",
+        originCountries: ["Japan"],
+        forms: ["Powder"]
+      }
+    }
+  ]);
+  await page.goto("/");
+
+  await page.locator(".cmdk-trigger").click();
+  await expect(page.locator(".cmdk-overlay.cmdk-open")).toBeVisible();
+
+  await page.locator(".cmdk-input").fill("matcha");
+
+  // The live (debounced) Teatico source renders a tea-badged result.
+  const teaItem = page.locator(".cmdk-item", { has: page.locator(".cmdk-badge--tea") });
+  await expect(teaItem.first()).toBeVisible();
+  await expect(teaItem.first()).toContainText("Ceremonial Matcha");
 });
 
 test("fwitter shows fallback status when API fails", async ({ page }) => {
