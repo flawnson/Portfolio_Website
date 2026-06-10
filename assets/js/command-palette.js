@@ -19,6 +19,21 @@
 
     /* ----- self-contained helpers (kept identical to index.js) ----- */
 
+    /* Platform detection for the shortcut hint. Prefers the modern
+       userAgentData.platform, falls back to navigator.platform / userAgent.
+       Mac (and iOS) use ⌘; everything else uses Ctrl. */
+    function isMacPlatform() {
+        const uaData = navigator.userAgentData;
+        const platform =
+            (uaData && uaData.platform) ||
+            navigator.platform ||
+            navigator.userAgent ||
+            "";
+        return /mac|iphone|ipad|ipod/i.test(platform);
+    }
+
+    const SHORTCUT_LABEL = isMacPlatform() ? "⌘K" : "Ctrl K";
+
     function escapeHtml(str) {
         return String(str)
             .replace(/&/g, "&amp;")
@@ -508,7 +523,7 @@
                     <span><span class="cmdk-kbd">↑</span><span class="cmdk-kbd">↓</span> navigate
                           <span class="cmdk-kbd">↵</span> open
                           <span class="cmdk-kbd">esc</span> close</span>
-                    <span>⌘K</span>
+                    <span>${SHORTCUT_LABEL}</span>
                 </div>
             </div>`;
         document.body.appendChild(overlay);
@@ -749,19 +764,28 @@
 
     function injectTrigger() {
         const navList = document.querySelector("nav ul");
-        const trigger = document.createElement("button");
-        trigger.type = "button";
-        trigger.className = "cmdk-trigger";
-        trigger.setAttribute("aria-label", "Open search (Command or Control + K)");
-        trigger.innerHTML = `🔍 Search <span class="cmdk-kbd">⌘K</span>`;
-        trigger.addEventListener("click", open);
 
         if (navList) {
+            // Mirror the sibling nav items exactly: an <a><h4>…</h4></a>. The
+            // shortcut hint keeps its own .cmdk-kbd styling.
             const li = document.createElement("li");
-            li.appendChild(trigger);
+            const link = document.createElement("a");
+            link.href = "#";
+            link.className = "cmdk-trigger";
+            link.setAttribute("role", "button");
+            link.setAttribute("aria-label", "Open search (Command or Control + K)");
+            link.innerHTML = `<h4>🔍 Search <span class="cmdk-kbd">${SHORTCUT_LABEL}</span></h4>`;
+            link.addEventListener("click", (e) => { e.preventDefault(); open(); });
+            li.appendChild(link);
             navList.insertBefore(li, navList.firstChild);
         } else {
-            trigger.classList.add("cmdk-trigger--floating");
+            // No nav list (blog, fwitter): fall back to the floating pill.
+            const trigger = document.createElement("button");
+            trigger.type = "button";
+            trigger.className = "cmdk-trigger cmdk-trigger--floating";
+            trigger.setAttribute("aria-label", "Open search (Command or Control + K)");
+            trigger.innerHTML = `🔍 Search <span class="cmdk-kbd">${SHORTCUT_LABEL}</span>`;
+            trigger.addEventListener("click", open);
             document.body.appendChild(trigger);
         }
     }

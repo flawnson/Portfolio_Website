@@ -25,43 +25,46 @@ body.dark-mode {
     --cmdk-active: rgba(33, 150, 243, 0.18);
 }
 
-/* ----- Trigger affordance ----- */
-.cmdk-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--cmdk-border);
-    border-radius: 999px;
-    background: var(--cmdk-subtle);
-    color: var(--cmdk-fg);
-    font-family: "Karla", "Roboto", sans-serif;
-    font-size: 1.3rem;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.cmdk-trigger:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-}
-
+/* ----- Trigger affordance -----
+   In the nav, the trigger is a plain <a><h4>…</h4></a> that inherits the exact
+   styling of its sibling links — so no layout/colour rules here, only the
+   shortcut hint keeps its own look. The floating variant (pages without a nav
+   list) still wears the pill below. */
 .cmdk-trigger .cmdk-kbd {
+    display: inline-block;
     font-size: 1.1rem;
+    color: var(--cmdk-muted);
+    text-decoration: none;
     opacity: 0.7;
     border: 1px solid var(--cmdk-border);
     border-radius: 6px;
     padding: 1px 6px;
 }
 
-/* Floating variant (pages without a nav list) */
+/* Floating variant (pages without a nav list) — the standalone pill button. */
 .cmdk-trigger--floating {
     position: fixed;
     right: 18px;
     bottom: 18px;
     z-index: 9000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--cmdk-border);
+    border-radius: 999px;
     background: var(--cmdk-bg);
+    color: var(--cmdk-fg);
+    font-family: "Karla", "Roboto", sans-serif;
+    font-size: 1.3rem;
+    cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cmdk-trigger--floating:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
 }
 
 /* ----- Overlay ----- */
