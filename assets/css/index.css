@@ -272,3 +272,110 @@ body.dark-mode .health-subtitle,
 body.dark-mode .health-loading {
     color: #aaa;
 }
+
+/* GitHub contributions heatmap */
+.contrib-subtitle {
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: grey;
+}
+
+.contrib-loading {
+    color: grey;
+}
+
+.contrib-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-bottom: 8px;
+}
+
+.contrib-total {
+    font-weight: 700;
+}
+
+.contrib-note {
+    font-size: 0.85rem;
+    color: grey;
+}
+
+/* Horizontal scroll on narrow viewports so the year never squishes. */
+.contrib-scroll {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.contrib-months {
+    display: grid;
+    grid-auto-flow: column;
+    gap: 3px;
+    min-width: 560px;
+    margin-bottom: 4px;
+    font-size: 0.7rem;
+    color: grey;
+}
+
+.contrib-month {
+    grid-row: 1;
+}
+
+.contrib-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 1fr);
+    gap: 3px;
+    min-width: 560px;
+}
+
+.contrib-cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    min-width: 9px;
+    border-radius: 2px;
+    background: #ebedf0;
+}
+
+.contrib-empty {
+    background: transparent;
+}
+
+.contrib-cell.lvl-0 { background: #ebedf0; }
+.contrib-cell.lvl-1 { background: #9be9a8; }
+.contrib-cell.lvl-2 { background: #40c463; }
+.contrib-cell.lvl-3 { background: #30a14e; }
+.contrib-cell.lvl-4 { background: #216e39; }
+
+.contrib-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: grey;
+}
+
+.contrib-legend .contrib-cell {
+    width: 11px;
+    height: 11px;
+    aspect-ratio: auto;
+    flex: 0 0 auto;
+}
+
+/* Dark mode */
+body.dark-mode .contrib-subtitle,
+body.dark-mode .contrib-loading,
+body.dark-mode .contrib-note,
+body.dark-mode .contrib-months,
+body.dark-mode .contrib-legend {
+    color: #aaa;
+}
+
+body.dark-mode .contrib-cell.lvl-0 { background: #2d333b; }
+body.dark-mode .contrib-cell.lvl-1 { background: #0e4429; }
+body.dark-mode .contrib-cell.lvl-2 { background: #006d32; }
+body.dark-mode .contrib-cell.lvl-3 { background: #26a641; }
+body.dark-mode .contrib-cell.lvl-4 { background: #39d353; }

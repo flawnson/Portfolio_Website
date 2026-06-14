@@ -164,8 +164,8 @@ function getMicroPostsUrl() {
     return `${getApiBaseUrl()}/api/micro-posts.php?limit=5`;
 }
 
-function getLastCommitUrl() {
-    return `${getApiBaseUrl()}/api/github-last-commit.php`;
+function getGithubContributionsUrl() {
+    return `${getApiBaseUrl()}/api/github-contributions.php`;
 }
 
 function getHealthMetricsUrl() {
@@ -387,10 +387,8 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
     }
 }
 
-let lastCommitInterval = null;
-
 const microPostsRequest = fetchJsonWithTimeout(getMicroPostsUrl(), 5000);
-const lastCommitRequest = fetchJsonWithTimeout(getLastCommitUrl(), 5000);
+const githubContributionsRequest = fetchJsonWithTimeout(getGithubContributionsUrl(), 15000);
 
 async function loadMicroPosts() {
     const root = document.getElementById("micro-posts");
@@ -418,58 +416,120 @@ async function refreshMicroPosts() {
     }
 }
 
-async function loadLastCommitTimer() {
-    const timerEl = document.getElementById("last-commit-timer");
+function contributionLevel(count) {
+    if (count <= 0) return 0;
+    if (count <= 3) return 1;
+    if (count <= 6) return 2;
+    if (count <= 9) return 3;
+    return 4;
+}
 
-    if (!timerEl) return;
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    timerEl.textContent = "Loading...";
+function renderContributionGraph(data) {
+    const root = document.getElementById("github-panel");
+    if (!root) return;
+
+    const days = Array.isArray(data.days) ? data.days : [];
+    if (!days.length) {
+        root.innerHTML = "<p class=\"contrib-loading\">No contributions to show.</p>";
+        return;
+    }
+
+    // Pad the front so the first column starts on a Sunday (GitHub-style grid:
+    // 7 rows Sun→Sat, one column per week).
+    const firstDow = new Date(`${days[0].date}T00:00:00Z`).getUTCDay();
+    const cells = [];
+    for (let i = 0; i < firstDow; i++) {
+        cells.push(null); // empty leading cell
+    }
+    days.forEach((d) => cells.push(d));
+
+    const weekCount = Math.ceil(cells.length / 7);
+
+    // Month labels: mark a column when its first (top) day starts a new month.
+    let lastMonth = -1;
+    const monthCols = [];
+    for (let w = 0; w < weekCount; w++) {
+        const cell = cells[w * 7];
+        if (cell && cell.date) {
+            const m = new Date(`${cell.date}T00:00:00Z`).getUTCMonth();
+            if (m !== lastMonth) {
+                monthCols.push({ col: w, label: MONTH_LABELS[m] });
+                lastMonth = m;
+            }
+        }
+    }
+
+    const squares = cells.map((cell) => {
+        if (!cell) {
+            return "<span class=\"contrib-cell contrib-empty\"></span>";
+        }
+        const level = contributionLevel(cell.count);
+        const noun = cell.count === 1 ? "contribution" : "contributions";
+        const title = escapeHtml(`${cell.count} ${noun} on ${cell.date}`);
+        return `<span class="contrib-cell lvl-${level}" title="${title}"></span>`;
+    }).join("");
+
+    const monthRow = monthCols.map(({ col, label }) =>
+        `<span class="contrib-month" style="grid-column: ${col + 1};">${label}</span>`
+    ).join("");
+
+    const total = Number(data.totalContributions || 0).toLocaleString();
+    const meta = data.meta || {};
+    let note = "personal + work, last 12 months";
+    if (meta.stale) {
+        note += " · showing saved data";
+    } else if (meta.partial) {
+        note += " · one account unavailable";
+    }
+
+    root.innerHTML = `
+        <div class="contrib-head">
+            <span class="contrib-total">${total} contributions</span>
+            <span class="contrib-note">${escapeHtml(note)}</span>
+        </div>
+        <div class="contrib-scroll">
+            <div class="contrib-months" style="grid-template-columns: repeat(${weekCount}, 1fr);">${monthRow}</div>
+            <div class="contrib-grid" style="grid-template-columns: repeat(${weekCount}, 1fr);">${squares}</div>
+            <div class="contrib-legend">
+                <span>Less</span>
+                <span class="contrib-cell lvl-0"></span>
+                <span class="contrib-cell lvl-1"></span>
+                <span class="contrib-cell lvl-2"></span>
+                <span class="contrib-cell lvl-3"></span>
+                <span class="contrib-cell lvl-4"></span>
+                <span>More</span>
+            </div>
+        </div>
+    `;
+}
+
+async function loadGithubContributions(request) {
+    const root = document.getElementById("github-panel");
+    if (!root) return;
 
     try {
-        const data = await lastCommitRequest;
-        const lastCommitDate = new Date(data.created_at);
-
-        if (Number.isNaN(lastCommitDate.getTime())) {
-            throw new Error("Invalid commit timestamp received.");
+        const data = request
+            ? await request
+            : await fetchJsonWithTimeout(getGithubContributionsUrl(), 15000);
+        if (!data || data.ok === false) {
+            throw new Error((data && data.error) || "contributions_unavailable");
         }
-
-        function render() {
-            const now = new Date();
-            const diffMs = now - lastCommitDate;
-
-            const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
-            const days = Math.floor(totalSeconds / 86400);
-            const hours = Math.floor((totalSeconds % 86400) / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-
-            const parts = [];
-            if (days > 0) parts.push(`${days}d`);
-            parts.push(`${hours}h`);
-            parts.push(`${minutes}m`);
-            parts.push(`${seconds}s`);
-
-            timerEl.textContent = parts.join(" ");
-        }
-
-        render();
-
-        if (lastCommitInterval) {
-            clearInterval(lastCommitInterval);
-        }
-
-        lastCommitInterval = setInterval(render, 1000);
-    } catch (error) {
-        timerEl.textContent = "Could not load";
-        console.error(error);
+        renderContributionGraph(data);
+    } catch (err) {
+        console.error(err);
+        root.innerHTML = "<p class=\"contrib-loading\">Could not load contributions right now.</p>";
     }
 }
 
 loadMicroPosts();
-loadLastCommitTimer();
+loadGithubContributions(githubContributionsRequest);
 loadHealthMetrics();
 setInterval(refreshMicroPosts, 15000);
 setInterval(loadHealthMetrics, 600000); // refresh health every 10 minutes
+setInterval(loadGithubContributions, 1800000); // refresh contributions every 30 minutes
 
 const microPostsRoot = document.getElementById("micro-posts");
 if (microPostsRoot) {

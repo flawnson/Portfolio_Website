@@ -30,6 +30,32 @@ async function mockTeaticoSearch(page, hits = []) {
   });
 }
 
+// Builds a contributions payload with N trailing days of the given count so the
+// heatmap has cells to render. Pass ok:false to simulate the endpoint failing.
+async function mockGithubContributions(page, { days = 40, count = 2, ok = true } = {}) {
+  await page.route("**/api/github-contributions.php**", async (route) => {
+    if (!ok) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: false, error: "all_accounts_failed", days: [], totalContributions: 0, meta: { stale: true, partial: true } })
+      });
+      return;
+    }
+    const out = [];
+    const start = new Date(Date.UTC(2026, 0, 1));
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start.getTime() + i * 86400000);
+      out.push({ date: d.toISOString().slice(0, 10), count });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, days: out, totalContributions: days * count, meta: { accounts: 2, partial: false, stale: false } })
+    });
+  });
+}
+
 test("home page loads with core navigation links", async ({ page }) => {
   await mockMicroPostsApi(page);
   await page.goto("/");
@@ -38,6 +64,27 @@ test("home page loads with core navigation links", async ({ page }) => {
   await expect(page.getByRole("navigation").getByRole("link", { name: /Blog/i })).toBeVisible();
   await expect(page.getByRole("navigation").getByRole("link", { name: /Resume/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /What I'm working on/i })).toBeVisible();
+});
+
+test("github contributions panel renders the heatmap", async ({ page }) => {
+  await mockMicroPostsApi(page);
+  await mockGithubContributions(page, { days: 40, count: 2 });
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: /My GitHub contributions/i })).toBeVisible();
+  const panel = page.locator("#github-panel");
+  await expect(panel.locator(".contrib-total")).toContainText("80 contributions");
+  // 40 day cells rendered in the grid (leading pad cells are .contrib-empty;
+  // scope to .contrib-grid so the legend swatches don't count).
+  await expect(panel.locator(".contrib-grid .contrib-cell.lvl-1")).toHaveCount(40);
+});
+
+test("github contributions panel degrades gracefully when the endpoint fails", async ({ page }) => {
+  await mockMicroPostsApi(page);
+  await mockGithubContributions(page, { ok: false });
+  await page.goto("/");
+
+  await expect(page.locator("#github-panel")).toContainText("Could not load contributions");
 });
 
 test("resume PDF is reachable", async ({ request }) => {
