@@ -361,7 +361,7 @@ async function loadHealthMetrics() {
         renderHealthPanel(data.metrics || [], data.meta || {});
     } catch (err) {
         console.error(err);
-        root.innerHTML = "<p>Could not load health data right now.</p>";
+        root.innerHTML = "<p class=\"health-loading\">Could not load health data right now.</p>";
     }
 }
 
@@ -446,7 +446,19 @@ function renderContributionGraph(data) {
     }
     days.forEach((d) => cells.push(d));
 
-    const weekCount = Math.ceil(cells.length / 7);
+    // Only render as many trailing weeks as fit the column width, so the grid
+    // fills the left column without overflowing into a horizontal scroll.
+    const GAP = 3;          // matches .contrib-grid gap
+    const CELL = 11;        // target square size in px
+    const avail = root.clientWidth || 240;
+    const maxWeeks = Math.max(1, Math.floor((avail + GAP) / (CELL + GAP)));
+    const totalWeeks = Math.ceil(cells.length / 7);
+    const weekCount = Math.min(totalWeeks, maxWeeks);
+    // Drop whole leading weeks (slice on a multiple of 7) so every remaining
+    // column keeps its Sun→Sat row alignment.
+    const trimmed = cells.slice((totalWeeks - weekCount) * 7);
+    cells.length = 0;
+    trimmed.forEach((c) => cells.push(c));
 
     // Month labels: mark a column when its first (top) day starts a new month.
     let lastMonth = -1;
@@ -478,7 +490,7 @@ function renderContributionGraph(data) {
 
     const total = Number(data.totalContributions || 0).toLocaleString();
     const meta = data.meta || {};
-    let note = "personal + work, last 12 months";
+    let note = "personal + work";
     if (meta.stale) {
         note += " · showing saved data";
     } else if (meta.partial) {
@@ -518,6 +530,13 @@ async function loadGithubContributions(request) {
             throw new Error((data && data.error) || "contributions_unavailable");
         }
         renderContributionGraph(data);
+
+        // Re-fit the grid to the column when the viewport changes.
+        let resizeTimer;
+        window.addEventListener("resize", () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => renderContributionGraph(data), 150);
+        });
     } catch (err) {
         console.error(err);
         root.innerHTML = "<p class=\"contrib-loading\">Could not load contributions right now.</p>";

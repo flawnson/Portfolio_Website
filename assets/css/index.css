@@ -312,7 +312,6 @@ body.dark-mode .health-loading {
     display: grid;
     grid-auto-flow: column;
     gap: 3px;
-    min-width: 560px;
     margin-bottom: 4px;
     font-size: 0.7rem;
     color: grey;
@@ -327,7 +326,6 @@ body.dark-mode .health-loading {
     grid-auto-flow: column;
     grid-template-rows: repeat(7, 1fr);
     gap: 3px;
-    min-width: 560px;
 }
 
 .contrib-cell {
