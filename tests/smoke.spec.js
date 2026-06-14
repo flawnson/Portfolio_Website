@@ -71,7 +71,7 @@ test("github contributions panel renders the heatmap", async ({ page }) => {
   await mockGithubContributions(page, { days: 40, count: 2 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /My GitHub contributions/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Contributions/i })).toBeVisible();
   const panel = page.locator("#github-panel");
   await expect(panel.locator(".contrib-total")).toContainText("80 contributions");
   // 40 day cells rendered in the grid (leading pad cells are .contrib-empty;
