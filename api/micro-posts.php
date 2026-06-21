@@ -564,7 +564,14 @@ function route_micro_post(string $body): ?array {
     return ($result['ok'] ?? false) ? (array)$result['platforms'] : null;
 }
 
-function gemini_resolve_mentions(string $body, string $platform, string $apiKey): ?string {
+/**
+ * Asks Gemini which entity names in $body map to official @handles on $platform.
+ * Returns the list of high-confidence substitutions ([{original, handle,
+ * confidence}, ...]) or null — NOT a rewritten post. The caller applies these to
+ * the original text so formatting (newlines especially) is preserved exactly,
+ * rather than trusting the model to reproduce the whole post verbatim.
+ */
+function gemini_resolve_mentions(string $body, string $platform, string $apiKey): ?array {
     $modelName = config_string('geminiModel', 'gemini-2.5-flash');
     $model = rawurlencode($modelName);
 
@@ -633,12 +640,45 @@ function gemini_resolve_mentions(string $body, string $platform, string $apiKey)
         return null;
     }
 
-    $resolved = $parsed['resolved'] ?? null;
-    if (!is_string($resolved) || trim($resolved) === '') {
+    $subs = $parsed['substitutions'] ?? null;
+    if (!is_array($subs) || $subs === []) {
         return null;
     }
 
-    return $resolved;
+    return $subs;
+}
+
+/**
+ * Applies high-confidence @handle substitutions to the ORIGINAL post text,
+ * replacing the first occurrence of each entity name with its handle. Operating
+ * on the original (instead of trusting the model's full-text rewrite) guarantees
+ * the post's exact formatting — newlines especially — survives untouched. A
+ * substitution whose entity name can't be found, or whose confidence isn't high,
+ * is skipped; worst case a handle is simply not added, never the formatting lost.
+ */
+function apply_mention_substitutions(string $body, array $substitutions): string {
+    foreach ($substitutions as $sub) {
+        if (!is_array($sub)) {
+            continue;
+        }
+        $original   = is_string($sub['original'] ?? null) ? $sub['original'] : '';
+        $handle     = is_string($sub['handle'] ?? null) ? trim($sub['handle']) : '';
+        $confidence = is_string($sub['confidence'] ?? null) ? strtolower($sub['confidence']) : '';
+        if ($original === '' || $handle === '' || $confidence !== 'high') {
+            continue;
+        }
+        // Skip if the handle is already present, so re-running can't double up.
+        if (mb_strpos($body, $handle) !== false) {
+            continue;
+        }
+        // First occurrence only — repeated common words shouldn't be over-substituted.
+        $pos = mb_strpos($body, $original);
+        if ($pos === false) {
+            continue;
+        }
+        $body = mb_substr($body, 0, $pos) . $handle . mb_substr($body, $pos + mb_strlen($original));
+    }
+    return $body;
 }
 
 function resolve_mentions_for_syndication(string $body, string $platform): string {
@@ -648,11 +688,15 @@ function resolve_mentions_for_syndication(string $body, string $platform): strin
     }
 
     try {
-        $resolved = gemini_resolve_mentions($body, $platform, $apiKey);
-        if ($resolved !== null && $resolved !== $body) {
+        $substitutions = gemini_resolve_mentions($body, $platform, $apiKey);
+        if (empty($substitutions)) {
+            return $body;
+        }
+        $resolved = apply_mention_substitutions($body, $substitutions);
+        if ($resolved !== $body) {
             error_log("Fwitter mention resolution applied for {$platform}: " . json_encode(['original' => $body, 'resolved' => $resolved], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
-        return $resolved ?? $body;
+        return $resolved;
     } catch (Throwable $e) {
         error_log("Fwitter mention resolution crashed for {$platform}: " . $e->getMessage());
         return $body;
