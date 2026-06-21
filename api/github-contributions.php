@@ -339,9 +339,13 @@ function gh_handle(): void {
     // Snapshot key is date-independent so the fallback survives day changes.
     $snapshotKey = 'contrib_' . md5(json_encode([GH_BUILD, $labels]));
 
-    $cached = gh_cache_get($cacheKey, GH_CACHE_TTL);
-    if ($cached !== null) {
-        gh_respond(200, $cached);
+    // ?fresh=1 bypasses the response cache for a live read (debugging / forcing a
+    // refresh after a token fix, so a stale failure isn't shown for the full TTL).
+    if (($_GET['fresh'] ?? '') !== '1') {
+        $cached = gh_cache_get($cacheKey, GH_CACHE_TTL);
+        if ($cached !== null) {
+            gh_respond(200, $cached);
+        }
     }
 
     $merged = [];   // date => summed count
@@ -396,10 +400,11 @@ function gh_handle(): void {
         ],
     ];
 
-    gh_cache_put($cacheKey, $payload);
-    // Only snapshot a successful (and non-empty) result so a partial/empty fetch
-    // never overwrites a good fallback.
-    if ($total > 0 || !$payload['meta']['partial']) {
+    // Only cache/snapshot a FULL success. Caching a partial result would pin a
+    // failing account (e.g. a bad token) in place for the whole TTL; skipping the
+    // write lets the next request retry and self-heal once the token is fixed.
+    if (!$payload['meta']['partial']) {
+        gh_cache_put($cacheKey, $payload);
         gh_snapshot_put($snapshotKey, $payload);
     }
     gh_respond(200, $payload);
