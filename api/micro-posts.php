@@ -649,6 +649,86 @@ function gemini_resolve_mentions(string $body, string $platform, string $apiKey)
 }
 
 /**
+ * Confirms a handle actually resolves to a real account by querying the platform
+ * itself — the only way to be certain the account exists. Gemini's self-reported
+ * "high confidence" is NOT proof of existence (it can confidently return a handle
+ * that was never registered, was renamed, or is a near-miss spelling), so every
+ * candidate is checked against the live API before we trust it.
+ *
+ *   - bluesky: com.atproto.identity.resolveHandle returns a DID for real handles
+ *              and a 4xx for non-existent ones. No auth required.
+ *   - x:       GET /2/users/by/username/{name} returns the user object if it
+ *              exists, 404 / errors otherwise. Signed with the existing OAuth1 creds.
+ *   - threads: the Threads Graph API has no public arbitrary-handle lookup, so a
+ *              handle can't be verified — we treat it as unverifiable (return false)
+ *              and the caller drops the substitution rather than risk a bad mention.
+ *
+ * Returns true ONLY on a positive, unambiguous confirmation. Network errors,
+ * timeouts, missing credentials, and unverifiable platforms all return false:
+ * worst case the handle is simply not added — never a mention of a fake account.
+ */
+function verify_handle_exists(string $handle, string $platform): bool {
+    $clean = ltrim(trim($handle), '@');
+    if ($clean === '') {
+        return false;
+    }
+
+    if ($platform === 'bluesky') {
+        // Handles look like "name.bsky.social"; resolveHandle wants the bare handle.
+        $url = 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=' . rawurlencode($clean);
+        $res = http_get_request($url, [], 5);
+        return ($res['ok'] ?? false) && is_string($res['json']['did'] ?? null) && $res['json']['did'] !== '';
+    }
+
+    if ($platform === 'x') {
+        if (
+            config_string('xApiKey') === '' ||
+            config_string('xApiSecret') === '' ||
+            config_string('xAccessToken') === '' ||
+            config_string('xAccessTokenSecret') === ''
+        ) {
+            return false; // Can't verify without creds -> don't mention.
+        }
+        // X usernames are case-insensitive and contain only [A-Za-z0-9_].
+        if (!preg_match('/^[A-Za-z0-9_]{1,15}$/', $clean)) {
+            return false;
+        }
+        $url = 'https://api.x.com/2/users/by/username/' . rawurlencode($clean);
+        $res = http_get_request($url, [oauth1_header('GET', $url)], 5);
+        // A real user yields data.id; a missing one yields a 404 with an errors array.
+        return ($res['ok'] ?? false) && is_array($res['json']['data'] ?? null) && !empty($res['json']['data']['id']);
+    }
+
+    // threads (and any future platform without a lookup API): unverifiable.
+    return false;
+}
+
+/**
+ * Keeps only the substitutions whose handle is confirmed to exist on the target
+ * platform. This is the gate that turns "Gemini is confident" into "the account
+ * provably exists", so a faulty-but-confident suggestion can never become a live
+ * @ mention. Unverifiable platforms (e.g. Threads) drop all substitutions here.
+ */
+function filter_verified_substitutions(array $substitutions, string $platform): array {
+    $verified = [];
+    foreach ($substitutions as $sub) {
+        if (!is_array($sub)) {
+            continue;
+        }
+        $handle = is_string($sub['handle'] ?? null) ? trim($sub['handle']) : '';
+        if ($handle === '') {
+            continue;
+        }
+        if (verify_handle_exists($handle, $platform)) {
+            $verified[] = $sub;
+        } else {
+            error_log("Fwitter mention resolution: dropped unverified handle {$handle} for {$platform}");
+        }
+    }
+    return $verified;
+}
+
+/**
  * Applies high-confidence @handle substitutions to the ORIGINAL post text,
  * replacing the first occurrence of each entity name with its handle. Operating
  * on the original (instead of trusting the model's full-text rewrite) guarantees
@@ -689,6 +769,12 @@ function resolve_mentions_for_syndication(string $body, string $platform): strin
 
     try {
         $substitutions = gemini_resolve_mentions($body, $platform, $apiKey);
+        if (empty($substitutions)) {
+            return $body;
+        }
+        // Gemini's "high confidence" is only a candidate — confirm each handle
+        // actually exists on the platform before it's allowed to become a mention.
+        $substitutions = filter_verified_substitutions($substitutions, $platform);
         if (empty($substitutions)) {
             return $body;
         }
