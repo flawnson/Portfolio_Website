@@ -1540,14 +1540,58 @@ function thread_to_platform(string $platform, string $body, ?array $imageData = 
     return ['ok' => false, 'result' => ['ok' => false, 'api_error' => 'invalid_platform'], 'post_id' => null, 'thread' => ['chunks' => 0, 'posted' => 0]];
 }
 
-function syndicate_micro_post(string $body, int $postId, ?array $imageData = null): array {
+/**
+ * Normalizes the client-supplied syndication choice to one of:
+ *   'auto'    -> let Gemini route (default / unknown values)
+ *   'none'    -> do not syndicate at all
+ *   'x' | 'threads' | 'bluesky' -> force that single platform
+ * Unknown input falls back to 'auto' so a post is never rejected over routing.
+ */
+function normalize_syndication_choice($raw): string {
+    $value = strtolower(trim((string)$raw));
+    if ($value === '' || $value === 'auto') {
+        return 'auto';
+    }
+    if (in_array($value, ['none', 'off', 'skip'], true)) {
+        return 'none';
+    }
+    if (in_array($value, ['x', 'threads', 'bluesky'], true)) {
+        return $value;
+    }
+    return 'auto';
+}
+
+// $syndication: 'auto' (Gemini routes), 'none' (skip), or a forced platform
+// token ('x'|'threads'|'bluesky'). A forced platform bypasses Gemini routing.
+function syndicate_micro_post(string $body, int $postId, ?array $imageData = null, string $syndication = 'auto'): array {
+    if ($syndication === 'none') {
+        return [
+            'status' => 'skipped',
+            'reason' => 'user_opted_out',
+        ];
+    }
+
     if (!config_enabled('socialSyndicationEnabled')) {
         return [
             'status' => 'disabled',
         ];
     }
 
-    $route = route_micro_post_result($body, $imageData !== null);
+    // Threads syndication is text-only; a forced 'threads' choice on an image
+    // post would silently post text without the image. Fall back to auto routing
+    // (which excludes threads for image posts) instead.
+    if ($syndication === 'threads' && $imageData !== null) {
+        error_log("Fwitter syndication: forced 'threads' on image post {$postId}; falling back to auto routing");
+        $syndication = 'auto';
+    }
+
+    if ($syndication !== 'auto' && in_array($syndication, ['x', 'threads', 'bluesky'], true)) {
+        // User took over routing: post to exactly this platform, skipping Gemini.
+        $route = ['ok' => true, 'platforms' => [$syndication], 'forced' => true];
+    } else {
+        $route = route_micro_post_result($body, $imageData !== null);
+    }
+
     if (!($route['ok'] ?? false)) {
         error_log("Fwitter syndication skipped for post {$postId}: " . json_encode($route, JSON_UNESCAPED_SLASHES));
         return [
@@ -1587,9 +1631,9 @@ function syndicate_micro_post(string $body, int $postId, ?array $imageData = nul
     ];
 }
 
-function run_syndication_safely(string $body, int $postId, PDO $pdo, ?array $imageData = null): array {
+function run_syndication_safely(string $body, int $postId, PDO $pdo, ?array $imageData = null, string $syndication = 'auto'): array {
     try {
-        $result = syndicate_micro_post($body, $postId, $imageData);
+        $result = syndicate_micro_post($body, $postId, $imageData, $syndication);
 
         if (!empty($result['platforms'])) {
             $platformStr = implode(',', $result['platforms']);
@@ -1969,6 +2013,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($isMultipart) {
         $body = trim((string)($_POST['body'] ?? ''));
         $replyToId = isset($_POST['reply_to_id']) ? (int)$_POST['reply_to_id'] : 0;
+        $syndicationChoice = normalize_syndication_choice($_POST['syndication'] ?? 'auto');
     } else {
         $rawBody = file_get_contents("php://input");
         $json = json_decode($rawBody ?: "", true);
@@ -1977,6 +2022,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         $body = trim((string)($json["body"] ?? ""));
         $replyToId = isset($json["reply_to_id"]) ? (int)$json["reply_to_id"] : 0;
+        $syndicationChoice = normalize_syndication_choice($json["syndication"] ?? 'auto');
     }
 
     if ($body === "") {
@@ -2057,7 +2103,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     finish_response_early();
 
-    run_syndication_safely($body, $postId, $pdo, $imageData);
+    run_syndication_safely($body, $postId, $pdo, $imageData, $syndicationChoice);
     exit;
 }
 

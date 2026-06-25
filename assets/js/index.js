@@ -543,9 +543,30 @@ async function loadGithubContributions(request) {
     }
 }
 
+// Reveal the Maps Reviews section only if the badge image actually loads;
+// otherwise drop the section (and its divider) so a failed/blocked badge
+// leaves no trace.
+function loadLocalGuidesBadge() {
+    const section = document.getElementById("maps-reviews-section");
+    const divider = document.getElementById("maps-reviews-divider");
+    if (!section) return;
+    const img = section.querySelector("#local-guides-badge img[data-src]");
+    if (!img) return;
+    img.addEventListener("load", () => {
+        section.hidden = false;
+        if (divider) divider.hidden = false;
+    });
+    img.addEventListener("error", () => {
+        section.remove();
+        if (divider) divider.remove();
+    });
+    img.src = img.dataset.src; // attach listeners before loading begins
+}
+
 loadMicroPosts();
 loadGithubContributions(githubContributionsRequest);
 loadHealthMetrics();
+loadLocalGuidesBadge();
 setInterval(refreshMicroPosts, 15000);
 setInterval(loadHealthMetrics, 600000); // refresh health every 10 minutes
 setInterval(loadGithubContributions, 1800000); // refresh contributions every 30 minutes

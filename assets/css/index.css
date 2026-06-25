@@ -184,6 +184,16 @@ input:checked + .slider:before {
     margin-bottom: 6px;
 }
 
+.local-guides-badge {
+    margin-top: 12px;
+    text-align: center;
+}
+
+.local-guides-badge img {
+    max-width: 100%;
+    height: auto;
+}
+
 .health-week {
     display: flex;
     justify-content: center;
