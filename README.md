@@ -279,7 +279,17 @@ curl -X POST "https://graph.threads.net/v1.0/THREADS_USER_ID/threads_publish" \
   -d "access_token=LONG_LIVED_THREADS_ACCESS_TOKEN"
 ```
 
-Threads long-lived tokens expire. Refresh the token before it expires and replace `$threadsAccessToken`:
+Threads long-lived tokens expire after ~60 days, and an already-expired token cannot be refreshed — only re-authorization fixes it. `api/threads-token-refresh.php` keeps the token alive automatically: it refreshes the current token and persists the replacement to `/home/flawhvna/private/threads-token.json` (overridable via `$threadsTokenStorePath`), which `micro-posts.php` reads in preference to `$threadsAccessToken`. If the token has already expired, it emails one alert (`$threadsAlertEmail`, defaults to my Gmail) with re-auth instructions, same de-dupe pattern as the Google Health watchdog.
+
+Add a weekly cPanel cron job for it (use the PHP CLI path cPanel shows):
+
+```
+0 8 * * 1 /usr/local/bin/php /home/flawhvna/public_html/api/threads-token-refresh.php >/dev/null 2>&1
+```
+
+It can also be triggered manually: `https://flawnson.com/api/threads-token-refresh.php?token=ADMIN_TOKEN`. After replacing an expired token in the config, delete `threads-token.json` so the stale stored token stops shadowing the new one, then trigger the script once to seed the store.
+
+The manual refresh call, for reference:
 
 ```bash
 curl -G "https://graph.threads.net/refresh_access_token" \
@@ -309,6 +319,22 @@ curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_debug=1" \
 ```
 
 Valid `platform` values are `x`, `bluesky`, `threads`. Leave `publish` as `false` or omit it when only checking config and routing.
+
+A post's `syndicated_platforms` label is only written for platforms whose publish actually succeeded (a failed publish leaves the post unlabeled rather than showing a label that links nowhere). To repair historical rows labeled before that gating existed, run the cleanup action — it strips any label with no matching `platform_post_ids` entry:
+
+```bash
+# Preview first
+curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_cleanup=1" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Token: ADMIN_TOKEN" \
+  -d '{"dry_run":true}'
+
+# Apply (optionally scope with "ids":[...])
+curl -X POST "https://flawnson.com/api/micro-posts.php?syndication_cleanup=1" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Token: ADMIN_TOKEN" \
+  -d '{}'
+```
 
 #### References
 - Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key

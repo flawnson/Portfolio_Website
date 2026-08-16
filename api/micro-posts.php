@@ -789,6 +789,29 @@ function resolve_mentions_for_syndication(string $body, string $platform): strin
     }
 }
 
+/**
+ * Where api/threads-token-refresh.php (cron) persists the newest long-lived
+ * Threads token. Long-lived tokens expire after ~60 days; the cron refreshes
+ * them in time and writes the replacement here, since the static config value
+ * would otherwise go stale and every Threads publish would 190-error.
+ */
+function threads_token_store_path(): string {
+    return config_string('threadsTokenStorePath', '/home/flawhvna/private/threads-token.json');
+}
+
+/** The freshest Threads token: the cron-refreshed store, else the config value. */
+function threads_access_token(): string {
+    $path = threads_token_store_path();
+    if (is_readable($path)) {
+        $data = json_decode((string)@file_get_contents($path), true);
+        $stored = is_array($data) && is_string($data['access_token'] ?? null) ? trim($data['access_token']) : '';
+        if ($stored !== '') {
+            return $stored;
+        }
+    }
+    return config_string('threadsAccessToken');
+}
+
 function threads_fetch_permalink(string $threadId, string $accessToken): ?string {
     $result = http_get_request(
         'https://graph.threads.net/v1.0/' . rawurlencode($threadId) . '?fields=permalink&access_token=' . rawurlencode($accessToken)
@@ -1027,7 +1050,7 @@ function publish_to_x(string $body, ?array $imageData = null): array {
 // images are syndicated to X and Bluesky only.
 function publish_to_threads(string $body): array {
     $userId = config_string('threadsUserId');
-    $accessToken = config_string('threadsAccessToken');
+    $accessToken = threads_access_token();
 
     if ($userId === '' || $accessToken === '') {
         return ['ok' => false, 'error' => 'threads_not_configured'];
@@ -1112,7 +1135,7 @@ function reply_on_x(string $body, string $parentTweetId, ?array $imageData = nul
 // Text-only, like publish_to_threads — Threads image syndication is not supported.
 function reply_on_threads(string $body, string $parentId): array {
     $userId = config_string('threadsUserId');
-    $accessToken = config_string('threadsAccessToken');
+    $accessToken = threads_access_token();
 
     if ($userId === '' || $accessToken === '') {
         return ['ok' => false, 'error' => 'threads_not_configured'];
@@ -1544,7 +1567,8 @@ function thread_to_platform(string $platform, string $body, ?array $imageData = 
  * Normalizes the client-supplied syndication choice to one of:
  *   'auto'    -> let Gemini route (default / unknown values)
  *   'none'    -> do not syndicate at all
- *   'x' | 'threads' | 'bluesky' -> force that single platform
+ *   comma-joined platform list -> force exactly those platforms, e.g.
+ *   'threads' or 'x,threads' (deduped, canonical x,threads,bluesky order)
  * Unknown input falls back to 'auto' so a post is never rejected over routing.
  */
 function normalize_syndication_choice($raw): string {
@@ -1555,14 +1579,18 @@ function normalize_syndication_choice($raw): string {
     if (in_array($value, ['none', 'off', 'skip'], true)) {
         return 'none';
     }
-    if (in_array($value, ['x', 'threads', 'bluesky'], true)) {
-        return $value;
+
+    $validPlatforms = ['x', 'threads', 'bluesky'];
+    $tokens = array_values(array_unique(array_filter(array_map('trim', explode(',', $value)))));
+    if (!empty($tokens) && array_diff($tokens, $validPlatforms) === []) {
+        return implode(',', array_values(array_intersect($validPlatforms, $tokens)));
     }
     return 'auto';
 }
 
-// $syndication: 'auto' (Gemini routes), 'none' (skip), or a forced platform
-// token ('x'|'threads'|'bluesky'). A forced platform bypasses Gemini routing.
+// $syndication: 'auto' (Gemini routes), 'none' (skip), or a forced
+// comma-joined platform list such as 'threads' or 'x,threads'. A forced list
+// bypasses Gemini routing.
 function syndicate_micro_post(string $body, int $postId, ?array $imageData = null, string $syndication = 'auto'): array {
     if ($syndication === 'none') {
         return [
@@ -1577,17 +1605,23 @@ function syndicate_micro_post(string $body, int $postId, ?array $imageData = nul
         ];
     }
 
-    // Threads syndication is text-only; a forced 'threads' choice on an image
-    // post would silently post text without the image. Fall back to auto routing
-    // (which excludes threads for image posts) instead.
-    if ($syndication === 'threads' && $imageData !== null) {
-        error_log("Fwitter syndication: forced 'threads' on image post {$postId}; falling back to auto routing");
-        $syndication = 'auto';
+    $forced = [];
+    if ($syndication !== 'auto') {
+        $forced = array_values(array_filter(explode(',', $syndication)));
+
+        // Threads syndication is text-only; a forced 'threads' choice on an
+        // image post would silently post text without the image. Drop threads
+        // from the forced set; if nothing remains, fall back to auto routing
+        // (which excludes threads for image posts).
+        if ($imageData !== null && in_array('threads', $forced, true)) {
+            error_log("Fwitter syndication: forced 'threads' on image post {$postId}; excluding threads");
+            $forced = array_values(array_diff($forced, ['threads']));
+        }
     }
 
-    if ($syndication !== 'auto' && in_array($syndication, ['x', 'threads', 'bluesky'], true)) {
-        // User took over routing: post to exactly this platform, skipping Gemini.
-        $route = ['ok' => true, 'platforms' => [$syndication], 'forced' => true];
+    if (!empty($forced)) {
+        // User took over routing: post to exactly these platforms, skipping Gemini.
+        $route = ['ok' => true, 'platforms' => $forced, 'forced' => true];
     } else {
         $route = route_micro_post_result($body, $imageData !== null);
     }
@@ -1631,33 +1665,54 @@ function syndicate_micro_post(string $body, int $postId, ?array $imageData = nul
     ];
 }
 
+/**
+ * The platforms (and their post ids) that actually published, from a
+ * syndication result set. Only these may be recorded on the post: writing a
+ * merely-attempted platform would make clients show a "posted to X/Threads/
+ * Bluesky" label that links nowhere.
+ */
+function successful_syndication(array $results): array {
+    $platforms = [];
+    $platformPostIds = [];
+    foreach ($results as $platform => $platformResult) {
+        if (!($platformResult['ok'] ?? false)) {
+            continue;
+        }
+        $platforms[] = (string)$platform;
+        if (is_array($platformResult['post_id'] ?? null)) {
+            $platformPostIds[$platform] = $platformResult['post_id'];
+        }
+    }
+    return ['platforms' => $platforms, 'ids' => $platformPostIds];
+}
+
+function write_syndication_data(int $postId, array $results, PDO $pdo): void {
+    $succeeded = successful_syndication($results);
+    if (empty($succeeded['platforms'])) {
+        return; // nothing published -> the post stays unlabeled
+    }
+
+    try {
+        $sql = "UPDATE micro_posts SET syndicated_platforms = :platforms";
+        $params = [':platforms' => implode(',', $succeeded['platforms']), ':id' => $postId];
+        if (!empty($succeeded['ids'])) {
+            $sql .= ", platform_post_ids = :ids";
+            $params[':ids'] = json_encode($succeeded['ids'], JSON_UNESCAPED_SLASHES);
+        }
+        $sql .= " WHERE id = :id LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+    } catch (Throwable $e) {
+        error_log("Fwitter failed to write syndication data for post {$postId}: " . $e->getMessage());
+    }
+}
+
 function run_syndication_safely(string $body, int $postId, PDO $pdo, ?array $imageData = null, string $syndication = 'auto'): array {
     try {
         $result = syndicate_micro_post($body, $postId, $imageData, $syndication);
 
         if (!empty($result['platforms'])) {
-            $platformStr = implode(',', $result['platforms']);
-
-            $platformPostIds = [];
-            foreach ($result['results'] ?? [] as $platform => $platformResult) {
-                if (($platformResult['ok'] ?? false) && is_array($platformResult['post_id'] ?? null)) {
-                    $platformPostIds[$platform] = $platformResult['post_id'];
-                }
-            }
-
-            try {
-                $sql = "UPDATE micro_posts SET syndicated_platforms = :platforms";
-                $params = [':platforms' => $platformStr, ':id' => $postId];
-                if (!empty($platformPostIds)) {
-                    $sql .= ", platform_post_ids = :ids";
-                    $params[':ids'] = json_encode($platformPostIds, JSON_UNESCAPED_SLASHES);
-                }
-                $sql .= " WHERE id = :id LIMIT 1";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-            } catch (Throwable $e) {
-                error_log("Fwitter failed to write syndication data for post {$postId}: " . $e->getMessage());
-            }
+            write_syndication_data($postId, $result['results'] ?? [], $pdo);
         }
 
         return $result;
@@ -1770,28 +1825,7 @@ function run_reply_syndication_safely(int $replyPostId, int $parentPostId, strin
         $result = syndicate_reply($replyPostId, $parentPostId, $body, $pdo, $imageData);
 
         if (!empty($result['platforms'])) {
-            $platformStr = implode(',', $result['platforms']);
-
-            $platformPostIds = [];
-            foreach ($result['results'] ?? [] as $platform => $platformResult) {
-                if (($platformResult['ok'] ?? false) && is_array($platformResult['post_id'] ?? null)) {
-                    $platformPostIds[$platform] = $platformResult['post_id'];
-                }
-            }
-
-            try {
-                $sql = "UPDATE micro_posts SET syndicated_platforms = :platforms";
-                $params = [':platforms' => $platformStr, ':id' => $replyPostId];
-                if (!empty($platformPostIds)) {
-                    $sql .= ", platform_post_ids = :ids";
-                    $params[':ids'] = json_encode($platformPostIds, JSON_UNESCAPED_SLASHES);
-                }
-                $sql .= " WHERE id = :id LIMIT 1";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-            } catch (Throwable $e) {
-                error_log("Fwitter failed to write syndication data for reply {$replyPostId}: " . $e->getMessage());
-            }
+            write_syndication_data($replyPostId, $result['results'] ?? [], $pdo);
         }
 
         return $result;
@@ -1823,7 +1857,8 @@ function social_config_status(): array {
         ],
         'threads' => [
             'user_id_present' => config_string('threadsUserId') !== '',
-            'access_token_present' => config_string('threadsAccessToken') !== '',
+            'access_token_present' => threads_access_token() !== '',
+            'token_from_refresh_store' => threads_access_token() !== config_string('threadsAccessToken'),
         ],
     ];
 }
@@ -1914,6 +1949,70 @@ function handle_syndication_debug(): void {
     respond(200, $debug);
 }
 
+/**
+ * Maintenance repair for historical rows written before syndicated_platforms
+ * was gated on publish success: strips any platform label that has no matching
+ * platform_post_ids entry (the publish never actually happened), so clients
+ * stop showing labels that link nowhere. POST ?syndication_cleanup=1 with
+ * optional JSON {"ids":[...]} to limit scope and {"dry_run":true} to preview.
+ */
+function handle_syndication_cleanup(PDO $pdo): void {
+    require_admin_token();
+
+    $rawBody = file_get_contents("php://input");
+    $json = json_decode($rawBody ?: "", true);
+    $json = is_array($json) ? $json : [];
+
+    $onlyIds = [];
+    foreach ((array)($json['ids'] ?? []) as $id) {
+        if (is_numeric($id) && (int)$id > 0) {
+            $onlyIds[] = (int)$id;
+        }
+    }
+    $dryRun = filter_var($json['dry_run'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+    $sql = "SELECT id, syndicated_platforms, platform_post_ids FROM micro_posts
+            WHERE syndicated_platforms IS NOT NULL AND syndicated_platforms != ''";
+    if (!empty($onlyIds)) {
+        $sql .= " AND id IN (" . implode(',', array_fill(0, count($onlyIds), '?')) . ")";
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($onlyIds);
+
+    $changes = [];
+    while (is_array($row = $stmt->fetch())) {
+        $labeled = array_values(array_filter(array_map('trim', explode(',', (string)$row['syndicated_platforms']))));
+        $ids = is_string($row['platform_post_ids']) ? json_decode($row['platform_post_ids'], true) : null;
+        $proven = is_array($ids) ? array_keys($ids) : [];
+        $keep = array_values(array_intersect($labeled, $proven));
+
+        if ($keep === $labeled) {
+            continue;
+        }
+
+        $changes[] = [
+            'id' => (int)$row['id'],
+            'before' => $labeled,
+            'after' => $keep,
+        ];
+
+        if (!$dryRun) {
+            $update = $pdo->prepare("UPDATE micro_posts SET syndicated_platforms = :platforms WHERE id = :id LIMIT 1");
+            $update->execute([
+                ':platforms' => empty($keep) ? null : implode(',', $keep),
+                ':id' => (int)$row['id'],
+            ]);
+        }
+    }
+
+    respond(200, [
+        'ok' => true,
+        'dry_run' => $dryRun,
+        'changed' => count($changes),
+        'changes' => $changes,
+    ]);
+}
+
 if (!defined('MICRO_POSTS_TEST')) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_debug"])) {
@@ -1934,6 +2033,10 @@ try {
     respond(500, [
         'error' => 'database_connection_failed',
     ]);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_GET["syndication_cleanup"])) {
+    handle_syndication_cleanup($pdo);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {

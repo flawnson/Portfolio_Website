@@ -85,5 +85,35 @@ $within = true;
 foreach ($chunks as $c) { if (mb_strlen($c) > 280) { $within = false; } }
 check('fallback produced valid chunks', $within && split_is_faithful($long, $chunks, 280) && count($chunks) > 1, true);
 
+echo "\n=== 8. normalize_syndication_choice (incl. multi-platform forcing) ===\n";
+check('empty -> auto', normalize_syndication_choice(''), 'auto');
+check('auto -> auto', normalize_syndication_choice('auto'), 'auto');
+check('none -> none', normalize_syndication_choice('none'), 'none');
+check('off -> none', normalize_syndication_choice('off'), 'none');
+check('single platform', normalize_syndication_choice('threads'), 'threads');
+check('multi platform', normalize_syndication_choice('x,threads'), 'x,threads');
+check('multi platform reordered to canonical', normalize_syndication_choice('bluesky,x'), 'x,bluesky');
+check('all three', normalize_syndication_choice('threads,bluesky,x'), 'x,threads,bluesky');
+check('dupes collapse', normalize_syndication_choice('x,x'), 'x');
+check('whitespace tolerated', normalize_syndication_choice(' x , threads '), 'x,threads');
+check('unknown token -> auto', normalize_syndication_choice('x,myspace'), 'auto');
+check('garbage -> auto', normalize_syndication_choice('banana'), 'auto');
+
+echo "\n=== 9. successful_syndication records only platforms that published ===\n";
+$results = [
+    'x' => ['ok' => true, 'post_id' => ['post_id' => '123']],
+    'threads' => ['ok' => false, 'post_id' => null],
+];
+$succ = successful_syndication($results);
+check('failed platform excluded from labels', $succ['platforms'], ['x']);
+check('failed platform excluded from ids', array_keys($succ['ids']), ['x']);
+$succ = successful_syndication(['threads' => ['ok' => false, 'post_id' => null]]);
+check('all-failed -> no labels', $succ['platforms'], []);
+$succ = successful_syndication([
+    'x' => ['ok' => true, 'post_id' => ['post_id' => '1']],
+    'bluesky' => ['ok' => true, 'post_id' => ['uri' => 'at://a/b/c', 'cid' => 'z']],
+]);
+check('all-ok -> both recorded', $succ['platforms'], ['x', 'bluesky']);
+
 echo "\n" . ($fail === 0 ? "ALL PASSED ✅" : "{$fail} FAILED ❌") . "\n";
 exit($fail === 0 ? 0 : 1);
