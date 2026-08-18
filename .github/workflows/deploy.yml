@@ -22,7 +22,14 @@ jobs:
         run: npm install
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # The download occasionally hangs forever and eats the whole job timeout,
+        # so bound each attempt and retry instead.
+        run: |
+          for i in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "Playwright install attempt $i failed or hung; retrying..."
+          done
+          exit 1
 
       - name: Run smoke tests
         run: npm run test:e2e
