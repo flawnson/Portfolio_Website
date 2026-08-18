@@ -362,7 +362,7 @@ generic so any data type can be fetched, not just the default bundle.
 - `health-common.php` — shared include (config, CORS, curl wrappers, token store, cache, normalization). Not a public endpoint.
 - `health-auth.php` — one-time OAuth flow. `?action=authorize&token=ADMIN_TOKEN` (admin-gated) → Google consent; `?action=callback` is the registered redirect URI that stores the refresh token.
 - `health-metrics.php` — public read endpoint (uses the `:dailyRollUp` method for daily aggregates):
-  - `?dataType=steps&days=7` (or `&start=YYYY-MM-DD&end=YYYY-MM-DD`) — any single data type. Valid ids: `steps`, `distance`, `active-energy-burned`, `active-zone-minutes`, `heart-rate`, `daily-resting-heart-rate`, `sleep`, etc.
+  - `?dataType=steps&days=7` (or `&start=YYYY-MM-DD&end=YYYY-MM-DD`) — any single data type. Valid ids: `steps`, `distance`, `active-energy-burned`, `total-calories`, `active-zone-minutes`, `heart-rate`, `daily-resting-heart-rate`, `sleep`, etc.
   - no params → normalized bundle across a curated default set for the last 7 days (`?days=N`).
   - `?resource=identity|profile|pairedDevices` — account/device metadata.
   - Returns `{ ok, metrics:[{dataType,metric,start,end,value,unit,source,raw}], meta }`. On expired/revoked auth it serves the **last good snapshot** with `meta.stale=true` and `meta.as_of` (HTTP 200) so the public panel never goes blank; only if there's no snapshot yet does it return HTTP 409 `needs_reauth`.
@@ -400,6 +400,12 @@ $googleHealthScopes       = 'https://www.googleapis.com/auth/googlehealth.activi
 $googleHealthUserId       = 'me';
 $googleHealthAlertEmail   = 'flawnsontong1@gmail.com';   // where the re-auth watchdog emails the reconnect link
 $googleHealthStepGoal     = 10000;                       // daily step goal; a day counts as "worked out" if steps >= this OR a workout was logged
+// Star-day thresholds. The Health API has no goals endpoint (the old Fitbit Goals API has no
+// replacement) and exposes no sleep/readiness scores, so these are plain config numbers.
+// A worked-out day upgrades to a star (⭐) if minutes asleep >= the sleep goal AND total
+// daily burn (total-calories, incl. BMR) > the calorie goal.
+$googleHealthCalorieGoal      = 2358;                    // recommended daily burn, kcal
+$googleHealthSleepGoalMinutes = 450;                     // 7.5 hours
 // reuses the existing $adminToken to gate the authorize step
 ```
 

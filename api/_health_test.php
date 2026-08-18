@@ -63,6 +63,17 @@ $normHr = health_normalize_rollup_point('heart-rate', $hr);
 check('hr metric key', $normHr['metric'], 'heartRate');
 check('hr value (bpmAvg)', $normHr['value'], 61.5);
 
+echo "\n=== 5b. Total-calories rollup (kcal sum) ===\n";
+$tc = [
+    'civilStartTime' => ['date' => ['year' => 2026, 'month' => 8, 'day' => 10]],
+    'civilEndTime'   => ['date' => ['year' => 2026, 'month' => 8, 'day' => 11]],
+    'totalCalories'  => ['kcalSum' => 2570.4],
+];
+$normTc = health_normalize_rollup_point('total-calories', $tc);
+check('tc metric key', $normTc['metric'], 'totalCalories');
+check('tc value (kcalSum)', $normTc['value'], 2570.4);
+check('tc date', $normTc['date'], '2026-08-10');
+
 echo "\n=== 6. Normalize a REAL list point (steps, count string) ===\n";
 // Exact shape observed live from the list method.
 $listPoint = [
@@ -89,6 +100,7 @@ check('list date field', $nl['date'], '2026-06-06');
 echo "\n=== 7. Method routing ===\n";
 check('steps -> rollup', health_method_for('steps'), 'rollup');
 check('heart-rate -> rollup', health_method_for('heart-rate'), 'rollup');
+check('total-calories -> rollup', health_method_for('total-calories'), 'rollup');
 check('sleep -> list', health_method_for('sleep'), 'list');
 check('daily-resting-heart-rate -> list', health_method_for('daily-resting-heart-rate'), 'list');
 check('exercise -> list', health_method_for('exercise'), 'list');

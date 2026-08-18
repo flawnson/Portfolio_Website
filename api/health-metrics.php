@@ -42,6 +42,7 @@ $DEFAULT_DATA_TYPES = [
     'steps',
     'distance',
     'active-energy-burned',
+    'total-calories',
     'active-zone-minutes',
     'heart-rate',
     'daily-resting-heart-rate',
@@ -374,6 +375,10 @@ function health_handle_bundle(array $dataTypes, int $cacheTtl): void {
             'count'      => count($metrics),
             'build'      => HEALTH_BUILD,
             'step_goal'  => (int) health_config_string('googleHealthStepGoal', '10000'),
+            // Star-day thresholds: total daily burn (kcal, incl. BMR) and minutes
+            // asleep. The Health API has no goals endpoint, so these live in config.
+            'calorie_goal'       => (int) health_config_string('googleHealthCalorieGoal', '2358'),
+            'sleep_goal_minutes' => (int) health_config_string('googleHealthSleepGoalMinutes', '450'),
             'stale'      => false,
             'as_of'      => gmdate('Y-m-d\TH:i:s\Z'),
             'partial_errors' => $errors ?: null,

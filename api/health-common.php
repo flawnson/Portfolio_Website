@@ -39,7 +39,7 @@ const HEALTH_TOKEN_SKEW    = 120;
 
 // Bump on any change that affects response shape — it's mixed into the response
 // cache key, so a deploy auto-invalidates stale cached payloads.
-const HEALTH_BUILD         = 'health-v3-rhr';
+const HEALTH_BUILD         = 'health-v4-star';
 
 // ---------------------------------------------------------------------------
 // CORS + response helpers
@@ -83,6 +83,9 @@ function health_respond(int $status, array $data): void {
 
 function health_config_string(string $name, string $default = ''): string {
     $value = $GLOBALS[$name] ?? $default;
+    if (is_int($value) || is_float($value)) {
+        return (string) $value; // numeric config values (e.g. goals) are fine
+    }
     return is_string($value) ? trim($value) : $default;
 }
 

@@ -255,8 +255,9 @@ function buildBars(points, fmt) {
     return `<svg class="spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Time slept over the past week">${bars}${nums}</svg>`;
 }
 
-// Renders the past 7 days (excluding today) as worked-out (step goal hit OR a
-// workout logged) vs rest circles, plus the most recent night's time asleep.
+// Renders the past 7 days (excluding today) as star (worked out AND slept well
+// AND burned above the calorie goal), worked-out (step goal hit OR a workout
+// logged), or rest circles, plus the most recent night's time asleep.
 function renderHealthPanel(metrics, meta) {
     const root = document.getElementById("health-panel");
     if (!root) return;
@@ -264,11 +265,16 @@ function renderHealthPanel(metrics, meta) {
     metrics = Array.isArray(metrics) ? metrics : [];
     const stepGoalRaw = meta && Number(meta.step_goal);
     const stepGoal = Number.isFinite(stepGoalRaw) && stepGoalRaw > 0 ? stepGoalRaw : 10000;
+    const calorieGoalRaw = meta && Number(meta.calorie_goal);
+    const calorieGoal = Number.isFinite(calorieGoalRaw) && calorieGoalRaw > 0 ? calorieGoalRaw : 2358;
+    const sleepGoalRaw = meta && Number(meta.sleep_goal_minutes);
+    const sleepGoalMinutes = Number.isFinite(sleepGoalRaw) && sleepGoalRaw > 0 ? sleepGoalRaw : 450;
 
     const stepsByDate = {};
     const exerciseDates = new Set();
     const rhrByDate = {};
     const sleepByDate = {};
+    const caloriesByDate = {};
 
     for (const m of metrics) {
         if (!m) continue;
@@ -278,6 +284,9 @@ function renderHealthPanel(metrics, meta) {
         } else if (m.dataType === "exercise") {
             const key = exerciseDateKey(m);
             if (key) exerciseDates.add(key);
+        } else if (m.dataType === "total-calories" && m.date) {
+            const v = Number(m.value);
+            if (Number.isFinite(v)) caloriesByDate[m.date] = v;
         } else if (m.dataType === "daily-resting-heart-rate" && m.date) {
             const v = Number(m.value);
             if (Number.isFinite(v)) rhrByDate[m.date] = v;
@@ -300,8 +309,15 @@ function renderHealthPanel(metrics, meta) {
         const workedOut =
             (stepsByDate[key] != null && stepsByDate[key] >= stepGoal) ||
             exerciseDates.has(key);
+        // Star day: worked out AND slept past the goal AND total burn above goal.
+        const starDay =
+            workedOut &&
+            sleepByDate[key] != null && sleepByDate[key] >= sleepGoalMinutes &&
+            caloriesByDate[key] != null && caloriesByDate[key] > calorieGoal;
         circles.push(
-            workedOut
+            starDay
+                ? `<span class="health-day-star" role="img" title="${key}: star day (workout, good sleep, calorie goal beat)" aria-label="${key}: star day (workout, good sleep, calorie goal beat)">⭐</span>`
+                : workedOut
                 ? `<span class="health-day-check" role="img" title="${key}: worked out" aria-label="${key}: worked out">✅</span>`
                 : `<span class="health-day-rest" role="img" title="${key}: rest" aria-label="${key}: rest">❌</span>`
         );
